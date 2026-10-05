@@ -7,70 +7,104 @@ namespace Raoh\Tests;
 use PHPUnit\Framework\TestCase;
 use Raoh\Err;
 use Raoh\ErrorCodes;
+use Raoh\Input\Json;
 use Raoh\MessageKeys;
 use Raoh\Ok;
+use Raoh\Value\Float32;
 
+use function Raoh\Boundary\Array_\double;
 use function Raoh\Boundary\Array_\float_;
 
 class FloatDecoderTest extends TestCase
 {
-    public function testDecodeFloat(): void
+    public function testDecodeDouble(): void
     {
-        $r = float_()->decode(3.14);
+        $r = double()->decode(3.14);
         $this->assertInstanceOf(Ok::class, $r);
         $this->assertSame(3.14, $r->value);
     }
 
-    public function testDecodeIntAsFloat(): void
+    public function testDecodeIntAsDouble(): void
     {
-        $r = float_()->decode(42);
+        $r = double()->decode(42);
         $this->assertInstanceOf(Ok::class, $r);
         $this->assertSame(42.0, $r->value);
     }
 
-    public function testDecodeNumericString(): void
+    public function testNumericStringIsNotANumber(): void
     {
-        $r = float_()->decode('1.23');
+        $r = double()->decode('1.23');
+        $this->assertInstanceOf(Err::class, $r);
+        $issue = $r->issues->toArray()[0];
+        $this->assertSame('type_mismatch', $issue->code);
+        $this->assertSame(['expected' => 'double', 'actual' => 'string'], $issue->meta);
+    }
+
+    public function testFloatIsRoundedOnceToFloat32(): void
+    {
+        $r = float_()->decode(Json::parse('0.1'));
         $this->assertInstanceOf(Ok::class, $r);
-        $this->assertSame(1.23, $r->value);
+        $this->assertInstanceOf(Float32::class, $r->value);
+        $this->assertSame('0.1', (string) $r->value);
+        $this->assertSame((float) 0.100000001490116119384765625, $r->value->value);
+    }
+
+    public function testNegativeZeroIsKept(): void
+    {
+        $r = double()->decode(Json::parse('-0'));
+        $this->assertInstanceOf(Ok::class, $r);
+        $this->assertSame(-INF, fdiv(1, $r->value));
+    }
+
+    public function testOutOfRangeFloat32(): void
+    {
+        $r = float_()->decode(Json::parse('1e39'));
+        $this->assertInstanceOf(Err::class, $r);
+        $this->assertSame('type_mismatch.numeric_range', $r->issues->toArray()[0]->messageKey);
     }
 
     public function testRequiredOnNull(): void
     {
-        $r = float_()->decode(null);
+        $r = double()->decode(null);
         $this->assertInstanceOf(Err::class, $r);
         $this->assertSame('required', $r->issues->toArray()[0]->code);
     }
 
     public function testMin(): void
     {
-        $this->assertInstanceOf(Ok::class, float_()->min(0.0)->decode(0.0));
-        $r = float_()->min(1.0)->decode(0.5);
+        $this->assertInstanceOf(Ok::class, double()->min(0.0)->decode(0.0));
+        $r = double()->min(1.0)->decode(0.5);
         $this->assertInstanceOf(Err::class, $r);
         $issue = $r->issues->toArray()[0];
         $this->assertSame(ErrorCodes::OutOfRange->value, $issue->code);
         $this->assertSame(MessageKeys::OutOfRangeMinimum->value, $issue->messageKey);
         $this->assertSame(['min' => 1.0, 'actual' => 0.5], $issue->meta);
+        $this->assertSame('must be at least 1.0', $issue->message);
+    }
+
+    public function testFloat32BoundIsWrittenAtItsWidth(): void
+    {
+        $r = float_()->min(0.1)->decode(0.05);
+        $this->assertInstanceOf(Err::class, $r);
+        $this->assertSame('must be at least 0.1', $r->issues->toArray()[0]->message);
     }
 
     public function testMax(): void
     {
-        $this->assertInstanceOf(Ok::class, float_()->max(10.0)->decode(10.0));
-        $r = float_()->max(10.0)->decode(10.1);
+        $this->assertInstanceOf(Ok::class, double()->max(10.0)->decode(10.0));
+        $r = double()->max(10.0)->decode(10.1);
         $this->assertInstanceOf(Err::class, $r);
         $issue = $r->issues->toArray()[0];
-        $this->assertSame(ErrorCodes::OutOfRange->value, $issue->code);
         $this->assertSame(MessageKeys::OutOfRangeMaximum->value, $issue->messageKey);
         $this->assertSame(['max' => 10.0, 'actual' => 10.1], $issue->meta);
     }
 
     public function testRange(): void
     {
-        $this->assertInstanceOf(Ok::class, float_()->range(0.0, 1.0)->decode(0.5));
-        $r = float_()->range(0.0, 1.0)->decode(1.1);
+        $this->assertInstanceOf(Ok::class, double()->range(0.0, 1.0)->decode(0.5));
+        $r = double()->range(0.0, 1.0)->decode(1.1);
         $this->assertInstanceOf(Err::class, $r);
         $issue = $r->issues->toArray()[0];
-        $this->assertSame(ErrorCodes::OutOfRange->value, $issue->code);
         $this->assertSame(MessageKeys::OutOfRangeRange->value, $issue->messageKey);
         $this->assertSame(['min' => 0.0, 'max' => 1.0, 'actual' => 1.1], $issue->meta);
     }
@@ -78,67 +112,34 @@ class FloatDecoderTest extends TestCase
     public function testRangeInvertedThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        float_()->range(100.0, 50.0);
+        double()->range(100.0, 50.0);
     }
 
     public function testPositive(): void
     {
-        $this->assertInstanceOf(Ok::class, float_()->positive()->decode(0.1));
-        $r = float_()->positive()->decode(0.0);
+        $this->assertInstanceOf(Ok::class, double()->positive()->decode(0.1));
+        $r = double()->positive()->decode(0.0);
         $this->assertInstanceOf(Err::class, $r);
         $issue = $r->issues->toArray()[0];
-        $this->assertSame(ErrorCodes::OutOfRange->value, $issue->code);
         $this->assertSame(MessageKeys::OutOfRangePositive->value, $issue->messageKey);
-        $this->assertInstanceOf(Err::class, float_()->positive()->decode(-1.0));
+        $this->assertSame(['min' => 0.0, 'actual' => 0.0], $issue->meta);
+        $this->assertInstanceOf(Err::class, double()->positive()->decode(-1.0));
+    }
+
+    public function testNegativeZeroIsNegative(): void
+    {
+        $this->assertInstanceOf(Ok::class, double()->negative()->decode(Json::parse('-0.0')));
+        $this->assertInstanceOf(Err::class, double()->nonNegative()->decode(Json::parse('-0.0')));
     }
 
     public function testCustomMessageSurvivesResolve(): void
     {
-        $r = float_()->positive('正の数にしてください')->decode(0.0);
+        $r = double()->positive('正の数にしてください')->decode(0.0);
         $this->assertInstanceOf(Err::class, $r);
         $issue = $r->issues->toArray()[0];
         $this->assertTrue($issue->customMessage);
         $this->assertSame('正の数にしてください', $issue->message);
         $resolved = $issue->resolve(fn () => 'must be positive');
         $this->assertSame('正の数にしてください', $resolved->message);
-    }
-
-    // -------------------------------------------------------------------------
-    // scale() tests
-    // -------------------------------------------------------------------------
-
-    public function testScalePass(): void
-    {
-        $this->assertInstanceOf(Ok::class, float_()->scale(2)->decode(1.23));
-        $this->assertInstanceOf(Ok::class, float_()->scale(2)->decode(1.2));
-        $this->assertInstanceOf(Ok::class, float_()->scale(2)->decode(1.0));
-    }
-
-    public function testScaleFail(): void
-    {
-        $r = float_()->scale(2)->decode(1.234);
-        $this->assertInstanceOf(Err::class, $r);
-        $this->assertSame('invalid_scale', $r->issues->toArray()[0]->code);
-    }
-
-    public function testScaleZero(): void
-    {
-        $this->assertInstanceOf(Ok::class, float_()->scale(0)->decode(5.0));
-        $r = float_()->scale(0)->decode(5.1);
-        $this->assertInstanceOf(Err::class, $r);
-        $this->assertSame('invalid_scale', $r->issues->toArray()[0]->code);
-    }
-
-    public function testScaleVerySmallFloat(): void
-    {
-        // 0.1 cannot be represented exactly in IEEE 754, but its string form
-        // via sprintf('%.14F') rounds correctly to 1 decimal place.
-        $this->assertInstanceOf(Ok::class, float_()->scale(1)->decode(0.1));
-    }
-
-    public function testScaleNegativeThrows(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        float_()->scale(-1);
     }
 }

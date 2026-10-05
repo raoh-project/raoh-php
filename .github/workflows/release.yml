@@ -1,0 +1,130 @@
+name: Release
+
+# Releases the commit at the tip of main as version vX.Y.Z of raoh/raoh. A Composer package is
+# released by its tag alone: Packagist reads the tag through the repository's webhook, and keeps
+# the commit it first saw for a version, so deleting or moving the tag afterwards does not take it
+# back from anyone who has installed it. So this workflow checks the commit first and makes the tag
+# itself, last, rather than being started by a tag that is already public.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The version to release, X.Y.Z without the v
+        required: true
+        type: string
+
+# One release at a time, and none left out. A group holds one run waiting by default, and a run that
+# comes after it takes its place, so a release asked for while another waited would be dropped;
+# queue: max holds every run, up to a hundred. A run that waited for one asking the same version
+# finds the tag it made, and stops.
+concurrency:
+  group: release
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+      tag: ${{ steps.check.outputs.tag }}
+    steps:
+      - name: The run is on main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run the release on main, not ${GITHUB_REF}"
+          exit 1
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: The version is new and the changelog has it
+        id: check
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::$VERSION is not X.Y.Z"
+            exit 1
+          fi
+          tag="v$VERSION"
+          git fetch --quiet --tags --force origin
+          if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag exists"
+            exit 1
+          fi
+          latest="$(git tag | { grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || true; } | sort -V | tail -n 1)"
+          if [[ -n "$latest" && "$(printf '%s\n%s\n' "$latest" "$tag" | sort -V | tail -n 1)" != "$tag" ]]; then
+            echo "::error::$tag is not after $latest, the latest release"
+            exit 1
+          fi
+          # Packagist would take a version written in composer.json over the tag's.
+          if jq -e 'has("version")' composer.json >/dev/null; then
+            echo "::error::composer.json names a version; the tag is the version"
+            exit 1
+          fi
+          if ! grep -Eq "^## \[${VERSION//./\\.}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no heading '## [$VERSION] - YYYY-MM-DD'"
+            exit 1
+          fi
+          echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  # Everything CI checks of a commit, on the commit the tag will name, with the conformance report
+  # naming the version.
+  ci:
+    needs: check
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.check.outputs.sha }}
+      version: ${{ inputs.version }}
+
+  release:
+    needs: [check, ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+      - name: Tag the commit and publish the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          TAG: ${{ needs.check.outputs.tag }}
+          SHA: ${{ needs.check.outputs.sha }}
+        run: |
+          # The section of CHANGELOG.md under "## [X.Y.Z] - date", up to the next heading of that
+          # level.
+          awk -v heading="## [$VERSION] - " '
+            index($0, heading) == 1 { inside = 1; next }
+            inside && /^## / { exit }
+            inside { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --target "$SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+      # Packagist reads the new tag through the repository's GitHub webhook. Where the secrets
+      # PACKAGIST_USERNAME and PACKAGIST_TOKEN are set, it is also asked to read it now, so that a
+      # webhook that is missing or failed does not leave the release unlisted.
+      - name: Ask Packagist to read the repository
+        env:
+          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          if [[ -z "$PACKAGIST_USERNAME" || -z "$PACKAGIST_TOKEN" ]]; then
+            echo "Packagist will read $TAG through the repository's webhook"
+            exit 0
+          fi
+          curl -fsS -X POST -H 'Content-Type: application/json' \
+            "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+            -d "{\"repository\":{\"url\":\"https://github.com/${GITHUB_REPOSITORY}\"}}" \
+            || echo "::warning::Packagist was not asked to read $TAG; its webhook still will"

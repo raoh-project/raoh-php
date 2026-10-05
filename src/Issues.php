@@ -23,7 +23,12 @@ final class Issues
      */
     public static function of(array $items): self
     {
-        return new self($items);
+        foreach ($items as $item) {
+            if (!$item instanceof Issue) {
+                throw new \InvalidArgumentException('issues hold Issue values, not ' . get_debug_type($item));
+            }
+        }
+        return new self(array_values($items));
     }
 
     public function add(Issue $issue): self
@@ -111,7 +116,7 @@ final class Issues
      * `messageKey` refines `code` for the message resolver and is not part of the
      * cross-language JSON API contract. Read it from `Issue::$messageKey` directly.
      *
-     * @return list<array{path: string, code: string, message: string, meta: array<string, mixed>}>
+     * @return list<array{path: string, code: string, message: string, meta: array<array-key, mixed>}>
      */
     public function toJsonList(): array
     {
@@ -119,7 +124,7 @@ final class Issues
             'path'    => $i->path->toJsonPointer(),
             'code'    => $i->code,
             'message' => $i->message,
-            'meta'    => $i->meta,
+            'meta'    => array_map(Internal\Wire::of(...), $i->meta),
         ], $this->items);
     }
 }

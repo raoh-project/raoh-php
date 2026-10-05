@@ -18,36 +18,39 @@ use Raoh\FieldDecoder;
  */
 
 /**
- * Wrap an array-based decoder to accept a raw JSON string.
+ * Wrap a decoder to accept a raw JSON string. The text is read into the input model by
+ * {@see \Raoh\Input\Json::parse()}: $dec is given a JsonObject for an object, a JsonNumber for a
+ * number and a list for an array, not what json_decode gives, so a decoder written to read PHP
+ * arrays is not one to pass here; the decoders of this library read both.
  *
  * @template T
- * @param Decoder<array<string, mixed>, T> $dec
- * @return Decoder<string, T>
+ * @param Decoder<mixed, T> $dec
+ * @return Decoder<mixed, T>
  */
 function from_json(Decoder $dec, int $depth = 512): Decoder
 {
     return JsonDecoders::fromJson($dec, $depth);
 }
 
-/** @return StringDecoder<mixed> */
+/** @return StringDecoder */
 function string_(): StringDecoder
 {
     return JsonDecoders::string_();
 }
 
-/** @return IntDecoder<mixed> */
+/** @return IntDecoder */
 function int_(): IntDecoder
 {
     return JsonDecoders::int_();
 }
 
-/** @return FloatDecoder<mixed> */
+/** @return FloatDecoder */
 function float_(): FloatDecoder
 {
     return JsonDecoders::float_();
 }
 
-/** @return BoolDecoder<mixed> */
+/** @return BoolDecoder */
 function bool_(): BoolDecoder
 {
     return JsonDecoders::bool_();
@@ -56,7 +59,7 @@ function bool_(): BoolDecoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @return FieldDecoder&Decoder<array<string, mixed>, T>
+ * @return FieldDecoder<mixed, T>
  */
 function field(string $name, Decoder $dec): FieldDecoder
 {
@@ -66,16 +69,16 @@ function field(string $name, Decoder $dec): FieldDecoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @return Decoder<array<string, mixed>, T|null>
+ * @return FieldDecoder<mixed, T|null>
  */
-function optional_field(string $name, Decoder $dec): Decoder
+function optional_field(string $name, Decoder $dec): FieldDecoder
 {
     return JsonDecoders::optionalField($name, $dec);
 }
 
 /**
  * @template T
- * @param Decoder<array<string, mixed>, T> $dec
+ * @param Decoder<mixed, T> $dec
  * @return Decoder<mixed, T>
  */
 function nested(Decoder $dec): Decoder

@@ -4,169 +4,22 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
-use Raoh\Decoder;
-use Raoh\DecoderTrait;
-use Raoh\ErrorCodes;
-use Raoh\MessageKeys;
-use Raoh\Path;
-use Raoh\Result;
+use Raoh\Internal\Arguments;
 
 /**
- * @template I
- * @implements Decoder<I, int>
+ * A decoder of int32 values, held in PHP ints.
+ *
+ * @extends NumberDecoder<int>
  */
-final class IntDecoder implements Decoder
+final class IntDecoder extends NumberDecoder
 {
-    /** @use DecoderTrait<I, int> */
-    use DecoderTrait;
-
-    /** @param Decoder<I, int> $inner */
-    public function __construct(private readonly Decoder $inner)
-    {
-    }
-
-    public function decode(mixed $in, ?Path $path = null): Result
-    {
-        return $this->inner->decode($in, $path ?? Path::root());
-    }
-
-    public function min(int $n, ?string $message = null): static
-    {
-        return new static($this->chain(function (int $v, Path $p) use ($n, $message): Result {
-            if ($v < $n) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::OutOfRange->value,
-                    MessageKeys::OutOfRangeMinimum->value,
-                    $message,
-                    "must be at least {$n}",
-                    ['min' => $n, 'actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function max(int $n, ?string $message = null): static
-    {
-        return new static($this->chain(function (int $v, Path $p) use ($n, $message): Result {
-            if ($v > $n) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::OutOfRange->value,
-                    MessageKeys::OutOfRangeMaximum->value,
-                    $message,
-                    "must be at most {$n}",
-                    ['max' => $n, 'actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function range(int $min, int $max, ?string $message = null): static
-    {
-        if ($min > $max) {
-            throw new \InvalidArgumentException("range: min ({$min}) must not be greater than max ({$max})");
-        }
-        return new static($this->chain(function (int $v, Path $p) use ($min, $max, $message): Result {
-            if ($v < $min || $v > $max) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::OutOfRange->value,
-                    MessageKeys::OutOfRangeRange->value,
-                    $message,
-                    "must be between {$min} and {$max}",
-                    ['min' => $min, 'max' => $max, 'actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function positive(?string $message = null): static
-    {
-        return new static($this->chain(function (int $v, Path $p) use ($message): Result {
-            if ($v <= 0) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::OutOfRange->value,
-                    MessageKeys::OutOfRangePositive->value,
-                    $message,
-                    'must be positive',
-                    ['actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function negative(?string $message = null): static
-    {
-        return new static($this->chain(function (int $v, Path $p) use ($message): Result {
-            if ($v >= 0) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::OutOfRange->value,
-                    MessageKeys::OutOfRangeNegative->value,
-                    $message,
-                    'must be negative',
-                    ['actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function nonNegative(?string $message = null): static
-    {
-        return new static($this->chain(function (int $v, Path $p) use ($message): Result {
-            if ($v < 0) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::OutOfRange->value,
-                    MessageKeys::OutOfRangeNonNegative->value,
-                    $message,
-                    'must be non-negative',
-                    ['actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function nonPositive(?string $message = null): static
-    {
-        return new static($this->chain(function (int $v, Path $p) use ($message): Result {
-            if ($v > 0) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::OutOfRange->value,
-                    MessageKeys::OutOfRangeNonPositive->value,
-                    $message,
-                    'must be non-positive',
-                    ['actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
+    public const MIN = -2147483648;
+    public const MAX = 2147483647;
 
     public function multipleOf(int $divisor, ?string $message = null): static
     {
-        return new static($this->chain(function (int $v, Path $p) use ($divisor, $message): Result {
-            if ($v % $divisor !== 0) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::NotMultipleOf->value,
-                    ErrorCodes::NotMultipleOf->value,
-                    $message,
-                    "must be a multiple of {$divisor}",
-                    ['divisor' => $divisor, 'actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
+        $message = Arguments::message($message);
+        return $this->multiple(self::value($divisor), $message);
     }
 
     /**
@@ -174,29 +27,35 @@ final class IntDecoder implements Decoder
      */
     public function oneOf(array $allowed, ?string $message = null): static
     {
-        return new static($this->chain(function (int $v, Path $p) use ($allowed, $message): Result {
-            if (!in_array($v, $allowed, true)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidValue->value,
-                    ErrorCodes::InvalidValue->value,
-                    $message,
-                    'invalid value',
-                    ['allowed' => $allowed, 'actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
+        $message = Arguments::message($message);
+        return $this->allowed($allowed, $message);
     }
 
-    /**
-     * @return Decoder<I, int>
-     */
-    private function chain(callable $constraint): Decoder
+    protected static function order(mixed $a, mixed $b): int
     {
-        return \Raoh\CallableDecoder::of(
-            fn (mixed $in, ?Path $path = null): Result => $this->decode($in, $path)
-                ->flatMap(fn (int $v): Result => $constraint($v, $path ?? Path::root())),
-        );
+        return $a <=> $b;
+    }
+
+    protected static function value(mixed $v): int
+    {
+        if (!is_int($v) || $v < self::MIN || $v > self::MAX) {
+            throw new \InvalidArgumentException('not an int32: ' . var_export($v, true));
+        }
+        return $v;
+    }
+
+    protected static function least(): int
+    {
+        return 1;
+    }
+
+    protected static function greatest(): int
+    {
+        return -1;
+    }
+
+    protected static function zero(): int
+    {
+        return 0;
     }
 }

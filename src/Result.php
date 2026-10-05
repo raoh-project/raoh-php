@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Arguments;
+
 /**
- * @template T
+ * @template-covariant T
  */
 abstract readonly class Result
 {
@@ -29,7 +31,7 @@ abstract readonly class Result
 
     /**
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function fail(
         Path $path,
@@ -43,7 +45,7 @@ abstract readonly class Result
 
     /**
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function failAtRoot(
         string $code,
@@ -63,7 +65,7 @@ abstract readonly class Result
      * subject to resolution via `$messageKey`.
      *
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function failWith(
         Path $path,
@@ -73,12 +75,41 @@ abstract readonly class Result
         string $defaultMessage,
         array $meta = [],
     ): Err {
+        Arguments::text($defaultMessage, 'the default message');
         if ($message !== null) {
             return new Err(Issues::empty()->add(
                 new Issue($path, $code, $message, $meta, true, $messageKey),
             ));
         }
         return new Err(Issues::empty()->add(Issue::of($path, $code, $defaultMessage, $meta, $messageKey)));
+    }
+
+    /**
+     * Fails with one issue whose message the caller gives, which resolving leaves as it is.
+     *
+     * @return Err<never>
+     * @param array<array-key, mixed> $meta
+     */
+    public static function failCustom(
+        Path $path,
+        string $code,
+        string $message,
+        array $meta = [],
+        ?string $messageKey = null,
+    ): Err {
+        return new Err(Issues::empty()->add(Issue::custom($path, $code, $message, $meta, $messageKey)));
+    }
+
+    /**
+     * Fails with one issue of a variant the decoders give, with the message given or derived.
+     *
+     * @internal
+     * @return Err<never>
+     * @param array<array-key, mixed> $meta
+     */
+    public static function issue(Path $path, string $messageKey, array $meta = [], ?string $message = null): Err
+    {
+        return new Err(Issues::empty()->add(Issue::derived($path, $messageKey, $meta, $message)));
     }
 
     public function isOk(): bool

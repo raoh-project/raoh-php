@@ -1,9 +1,9 @@
 {
     "name": "raoh/raoh",
-    "description": "Parse Don't Validate \u2014 composable decoder library for PHP 8.2+",
+    "description": "Parse Don't Validate — composable decoder library for PHP 8.2+",
     "type": "library",
     "license": "Apache-2.0",
-    "homepage": "https://github.com/kawasima/raoh-php",
+    "homepage": "https://github.com/raoh-project/raoh-php",
     "authors": [
         {
             "name": "kawasima",
@@ -21,7 +21,8 @@
         "combinator"
     ],
     "require": {
-        "php": "^8.2"
+        "php": "^8.2",
+        "raoh/notation-199x": "^0.2.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^11.0",
@@ -40,16 +41,23 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Raoh\\Tests\\": "tests/"
+            "Raoh\\Tests\\": "tests/",
+            "Raoh\\Conformance\\": "conformance/"
         }
     },
     "scripts": {
         "test": "phpunit",
-        "analyse": "./vendor/bin/phpstan analyse --memory-limit=512M"
+        "analyse": "./vendor/bin/phpstan analyse --memory-limit=512M",
+        "conformance": "scripts/conformance.sh",
+        "public-api": "php scripts/public-api.php"
     },
     "extra": {
         "branch-alias": {
-            "dev-develop": "0.8.x-dev"
+            "dev-develop": "0.9.x-dev"
         }
+    },
+    "support": {
+        "issues": "https://github.com/raoh-project/raoh-php/issues",
+        "source": "https://github.com/raoh-project/raoh-php"
     }
 }
