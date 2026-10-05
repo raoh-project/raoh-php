@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Raoh;
 
 /**
- * @template T
+ * @template-covariant T
  */
 abstract readonly class Result
 {
@@ -79,6 +79,34 @@ abstract readonly class Result
             ));
         }
         return new Err(Issues::empty()->add(Issue::of($path, $code, $defaultMessage, $meta, $messageKey)));
+    }
+
+    /**
+     * Fails with one issue whose message the caller gives, which resolving leaves as it is.
+     *
+     * @return Err<never>
+     * @param array<string, mixed> $meta
+     */
+    public static function failCustom(
+        Path $path,
+        string $code,
+        string $message,
+        array $meta = [],
+        ?string $messageKey = null,
+    ): Err {
+        return new Err(Issues::empty()->add(Issue::custom($path, $code, $message, $meta, $messageKey)));
+    }
+
+    /**
+     * Fails with one issue of a variant the decoders give, with the message given or derived.
+     *
+     * @internal
+     * @return Err<never>
+     * @param array<string, mixed> $meta
+     */
+    public static function issue(Path $path, string $messageKey, array $meta = [], ?string $message = null): Err
+    {
+        return new Err(Issues::empty()->add(Issue::derived($path, $messageKey, $meta, $message)));
     }
 
     public function isOk(): bool

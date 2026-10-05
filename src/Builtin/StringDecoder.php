@@ -4,507 +4,359 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
-use Raoh\CallableDecoder;
-use Raoh\Decoder;
-use Raoh\DecoderTrait;
-use Raoh\ErrorCodes;
-use Raoh\MessageKeys;
+use Raoh\Internal\Format\Cuid;
+use Raoh\Internal\Format\Email;
+use Raoh\Internal\Format\Ip;
+use Raoh\Internal\Format\Ulid;
+use Raoh\Internal\Format\Uri;
+use Raoh\Internal\Format\Uuid;
+use Raoh\Internal\Text;
+use Raoh\Notation199x\CaseConversion;
+use Raoh\Notation199x\Normalization;
+use Raoh\Notation199x\NormalizationForm;
+use Raoh\Notation199x\Pattern;
+use Raoh\Notation199x\ScalarValues;
 use Raoh\Path;
 use Raoh\Result;
+use Raoh\Value\Decimal;
+use Raoh\Value\Temporal\Instant;
+use Raoh\Value\Temporal\LocalDate;
+use Raoh\Value\Temporal\LocalDateTime;
+use Raoh\Value\Temporal\LocalTime;
+use Raoh\Value\Temporal\OffsetDateTime;
 
 /**
- * Fluent string constraint chain using the Decorator pattern.
- * Each constraint method wraps the previous decoder and returns a new StringDecoder.
+ * A decoder of strings, with the operations of the specification's `string`.
  *
- * @template I
- * @implements Decoder<I, string>
+ * Text is read by the rules of notation-199x: White_Space, case mapping and normalization of
+ * Unicode 18.0.0, lengths in Unicode scalar values, and the pattern language of the
+ * specification, whatever Unicode version and PCRE this PHP was built with.
+ *
+ * Every operation that checks something takes an optional last argument, the message to give in
+ * place of the catalogue's.
+ *
+ * @extends BaseDecoder<string>
  */
-final class StringDecoder implements Decoder
+final class StringDecoder extends BaseDecoder
 {
-    /** @use DecoderTrait<I, string> */
-    use DecoderTrait;
-
-    /** @param Decoder<I, string> $inner */
-    public function __construct(private readonly Decoder $inner)
-    {
-    }
-
-    public function decode(mixed $in, ?Path $path = null): Result
-    {
-        return $this->inner->decode($in, $path ?? Path::root());
-    }
-
-    // -------------------------------------------------------------------------
     // Transforms
-    // -------------------------------------------------------------------------
 
+    /** Removes leading and trailing White_Space. */
     public function trim(): static
     {
-        return new static($this->chain(
-            fn (string $v, Path $_p) => Result::ok(trim($v)),
-        ));
+        return $this->then(static fn (string $v): Result => Result::ok(Text::trim($v)));
     }
 
+    /** The default lowercase mapping of Unicode 18.0.0, with no language tailoring. */
     public function toLowerCase(): static
     {
-        return new static($this->chain(
-            fn (string $v, Path $_p) => Result::ok(mb_strtolower($v)),
-        ));
+        return $this->then(static fn (string $v): Result => Result::ok(CaseConversion::lowercase($v)));
     }
 
+    /** The default uppercase mapping of Unicode 18.0.0 (ß becomes SS), with no language tailoring. */
     public function toUpperCase(): static
     {
-        return new static($this->chain(
-            fn (string $v, Path $_p) => Result::ok(mb_strtoupper($v)),
-        ));
-    }
-
-    // -------------------------------------------------------------------------
-    // Presence constraints
-    // -------------------------------------------------------------------------
-
-    public function nonBlank(?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (trim($v) === '') {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::Blank->value,
-                    ErrorCodes::Blank->value,
-                    $message,
-                    'must not be blank',
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function allowBlank(): static
-    {
-        return $this; // No-op: blanks are allowed by default
-    }
-
-    // -------------------------------------------------------------------------
-    // Length constraints
-    // -------------------------------------------------------------------------
-
-    public function minLength(int $n, ?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($n, $message): Result {
-            if (mb_strlen($v) < $n) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::TooShort->value,
-                    ErrorCodes::TooShort->value,
-                    $message,
-                    "must be at least {$n} characters",
-                    ['min' => $n, 'actual' => mb_strlen($v)],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function maxLength(int $n, ?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($n, $message): Result {
-            if (mb_strlen($v) > $n) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::TooLong->value,
-                    ErrorCodes::TooLong->value,
-                    $message,
-                    "must be at most {$n} characters",
-                    ['max' => $n, 'actual' => mb_strlen($v)],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function fixedLength(int $n, ?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($n, $message): Result {
-            if (mb_strlen($v) !== $n) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidLength->value,
-                    ErrorCodes::InvalidLength->value,
-                    $message,
-                    "must be exactly {$n} characters",
-                    ['length' => $n, 'actual' => mb_strlen($v)],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    // -------------------------------------------------------------------------
-    // Pattern / format constraints
-    // -------------------------------------------------------------------------
-
-    public function pattern(string $regex, ?string $code = null, ?string $message = null): static
-    {
-        $code ??= ErrorCodes::InvalidFormat->value;
-        if (@preg_match($regex, '') === false) {
-            throw new \InvalidArgumentException("Invalid regular expression: {$regex}");
-        }
-        return new static($this->chain(function (string $v, Path $p) use ($regex, $code, $message): Result {
-            if (!preg_match($regex, $v)) {
-                return Result::failWith(
-                    $p,
-                    $code,
-                    $code,
-                    $message,
-                    'invalid format',
-                    ['pattern' => $regex],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function startsWith(string $prefix, ?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($prefix, $message): Result {
-            if (!str_starts_with($v, $prefix)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatStartsWith->value,
-                    $message,
-                    "must start with '{$prefix}'",
-                    ['prefix' => $prefix],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function endsWith(string $suffix, ?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($suffix, $message): Result {
-            if (!str_ends_with($v, $suffix)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatEndsWith->value,
-                    $message,
-                    "must end with '{$suffix}'",
-                    ['suffix' => $suffix],
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function includes(string $substring, ?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($substring, $message): Result {
-            if (!str_contains($v, $substring)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatIncludes->value,
-                    $message,
-                    "must include '{$substring}'",
-                    ['substring' => $substring],
-                );
-            }
-            return Result::ok($v);
-        }));
+        return $this->then(static fn (string $v): Result => Result::ok(CaseConversion::uppercase($v)));
     }
 
     /**
+     * Unicode 18.0.0 normalization in the form named: NFC, NFD, NFKC or NFKD.
+     */
+    public function normalize(string $form = 'NFC'): static
+    {
+        $f = null;
+        foreach (NormalizationForm::cases() as $case) {
+            if ($case->name === $form) {
+                $f = $case;
+            }
+        }
+        if ($f === null) {
+            throw new \InvalidArgumentException("no normalization form {$form}");
+        }
+        return $this->then(static fn (string $v): Result => Result::ok(Normalization::normalize($f, $v)));
+    }
+
+    // Checks
+
+    /** Fails for a string that is empty or holds only White_Space. */
+    public function nonBlank(?string $message = null): static
+    {
+        return $this->check(static fn (string $v): bool => !Text::isBlank($v), 'blank', [], $message);
+    }
+
+    /** At least that many Unicode scalar values. */
+    public function minLength(int $min, ?string $message = null): static
+    {
+        return $this->then(static function (string $v, Path $p) use ($min, $message): Result {
+            $n = ScalarValues::count($v);
+            return $n < $min
+                ? Result::issue($p, 'too_short', ['min' => $min, 'actual' => $n], $message)
+                : Result::ok($v);
+        });
+    }
+
+    /** At most that many Unicode scalar values. */
+    public function maxLength(int $max, ?string $message = null): static
+    {
+        return $this->then(static function (string $v, Path $p) use ($max, $message): Result {
+            $n = ScalarValues::count($v);
+            return $n > $max
+                ? Result::issue($p, 'too_long', ['max' => $max, 'actual' => $n], $message)
+                : Result::ok($v);
+        });
+    }
+
+    /** Exactly that many Unicode scalar values. */
+    public function fixedLength(int $length, ?string $message = null): static
+    {
+        return $this->then(static function (string $v, Path $p) use ($length, $message): Result {
+            $n = ScalarValues::count($v);
+            return $n !== $length
+                ? Result::issue($p, 'invalid_length', ['expected' => $length, 'actual' => $n], $message)
+                : Result::ok($v);
+        });
+    }
+
+    /**
+     * One of the allowed strings, which are distinct.
+     *
      * @param list<string> $allowed
      */
     public function oneOf(array $allowed, ?string $message = null): static
     {
-        return new static($this->chain(function (string $v, Path $p) use ($allowed, $message): Result {
-            if (!in_array($v, $allowed, true)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidValue->value,
-                    ErrorCodes::InvalidValue->value,
-                    $message,
-                    'invalid value',
-                    ['allowed' => $allowed, 'actual' => $v],
-                );
-            }
-            return Result::ok($v);
-        }));
+        if (count(array_unique($allowed)) !== count($allowed)) {
+            throw new \InvalidArgumentException('oneOf: the allowed strings are not distinct');
+        }
+        $set = array_flip($allowed);
+        $sorted = $allowed;
+        // UTF-8 compared byte by byte is in code point order.
+        sort($sorted, SORT_STRING);
+        return $this->check(
+            static fn (string $v): bool => isset($set[$v]),
+            'not_allowed',
+            static fn (string $v): array => ['allowed' => $sorted, 'actual' => $v],
+            $message,
+        );
     }
 
-    // -------------------------------------------------------------------------
-    // Format-specific constraints
-    // -------------------------------------------------------------------------
+    public function startsWith(string $prefix, ?string $message = null): static
+    {
+        return $this->check(
+            static fn (string $v): bool => str_starts_with($v, $prefix),
+            'invalid_format.starts_with',
+            ['prefix' => $prefix],
+            $message,
+        );
+    }
+
+    public function endsWith(string $suffix, ?string $message = null): static
+    {
+        return $this->check(
+            static fn (string $v): bool => str_ends_with($v, $suffix),
+            'invalid_format.ends_with',
+            ['suffix' => $suffix],
+            $message,
+        );
+    }
+
+    public function includes(string $substring, ?string $message = null): static
+    {
+        return $this->check(
+            static fn (string $v): bool => str_contains($v, $substring),
+            'invalid_format.includes',
+            ['substring' => $substring],
+            $message,
+        );
+    }
+
+    /**
+     * The whole string is one of the strings the pattern denotes. The pattern is written in the
+     * pattern language of the specification (spec/pattern.md), not PCRE's; one it refuses, or one
+     * past its limits, is refused here with an \InvalidArgumentException.
+     */
+    public function pattern(string $pattern, ?string $message = null): static
+    {
+        $read = Pattern::read($pattern);
+        if (!$read instanceof Pattern) {
+            throw new \InvalidArgumentException("not a pattern: {$pattern}");
+        }
+        return $this->check(
+            static fn (string $v): bool => $read->matches($v),
+            'invalid_format',
+            ['pattern' => $pattern],
+            $message,
+        );
+    }
 
     public function email(?string $message = null): static
     {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (!filter_var($v, FILTER_VALIDATE_EMAIL) || mb_strlen($v) > 254) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatEmail->value,
-                    $message,
-                    'not a valid email address',
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function url(?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (!filter_var($v, FILTER_VALIDATE_URL)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatUrl->value,
-                    $message,
-                    'not a valid URL',
-                );
-            }
-            $parsed = parse_url($v);
-            if (!is_array($parsed)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatUrl->value,
-                    $message,
-                    'not a valid URL',
-                );
-            }
-            $scheme = $parsed['scheme'] ?? null;
-            if (!in_array($scheme, ['http', 'https'], true)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatUrl->value,
-                    $message,
-                    'not a valid URL',
-                );
-            }
-            $port = isset($parsed['port']) ? (int) $parsed['port'] : null;
-            if ($port !== null && ($port < 1 || $port > 65535)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatUrl->value,
-                    $message,
-                    'not a valid URL',
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function uuid(?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $v)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatUuid->value,
-                    $message,
-                    'not a valid UUID',
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function ulid(?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (!preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $v)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatUlid->value,
-                    $message,
-                    'not a valid ULID',
-                );
-            }
-            return Result::ok($v);
-        }));
-    }
-
-    public function ip(?string $message = null): static
-    {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (!filter_var($v, FILTER_VALIDATE_IP)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatIp->value,
-                    $message,
-                    'not a valid IP address',
-                );
-            }
-            return Result::ok($v);
-        }));
+        return $this->check(Email::matches(...), 'invalid_format.email', [], $message);
     }
 
     public function ipv4(?string $message = null): static
     {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (!filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatIpv4->value,
-                    $message,
-                    'not a valid IPv4 address',
-                );
-            }
-            return Result::ok($v);
-        }));
+        return $this->check(Ip::isV4(...), 'invalid_format.ipv4', [], $message);
     }
 
     public function ipv6(?string $message = null): static
     {
-        return new static($this->chain(function (string $v, Path $p) use ($message): Result {
-            if (!filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-                return Result::failWith(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    MessageKeys::InvalidFormatIpv6->value,
-                    $message,
-                    'not a valid IPv6 address',
-                );
-            }
-            return Result::ok($v);
+        return $this->check(Ip::isV6(...), 'invalid_format.ipv6', [], $message);
+    }
+
+    public function ip(?string $message = null): static
+    {
+        return $this->check(Ip::isIp(...), 'invalid_format.ip', [], $message);
+    }
+
+    public function ulid(?string $message = null): static
+    {
+        return $this->check(Ulid::matches(...), 'invalid_format.ulid', [], $message);
+    }
+
+    public function cuid(?string $message = null): static
+    {
+        return $this->check(Cuid::matches(...), 'invalid_format.cuid', [], $message);
+    }
+
+    /** A UUID in either case, given as 32 lower-case hexadecimal digits grouped 8-4-4-4-12. */
+    public function uuid(?string $message = null): static
+    {
+        return $this->then(static function (string $v, Path $p) use ($message): Result {
+            $uuid = Uuid::read($v);
+            return $uuid === null
+                ? Result::issue($p, 'invalid_format.uuid', [], $message)
+                : Result::ok($uuid);
+        });
+    }
+
+    /** An RFC 3986 URI with an http or https scheme and a non-empty host, as written. */
+    public function url(?string $message = null): static
+    {
+        return $this->check(Uri::isUrl(...), 'invalid_format.url', [], $message);
+    }
+
+    /** An RFC 3986 URI (not a relative reference), as written. */
+    public function uri(?string $message = null): static
+    {
+        return $this->check(Uri::isUri(...), 'invalid_format.uri', [], $message);
+    }
+
+    // Conversions
+
+    /** An optional sign and ASCII digits, within the int32 range. */
+    public function toInt(?string $message = null): IntDecoder
+    {
+        return new IntDecoder($this->followedBy(self::integer(IntDecoder::MIN, IntDecoder::MAX, 'integer', $message)));
+    }
+
+    /** An optional sign and ASCII digits, within the int64 range. */
+    public function toLong(?string $message = null): LongDecoder
+    {
+        return new LongDecoder($this->followedBy(self::integer(PHP_INT_MIN, PHP_INT_MAX, 'long', $message)));
+    }
+
+    /** A decimal number, keeping the scale it is written with. */
+    public function toDecimal(?string $message = null): DecimalDecoder
+    {
+        return new DecimalDecoder($this->followedBy(static function (string $v, Path $p) use ($message): Result {
+            $d = Decimal::parse($v);
+            return $d === null
+                ? Result::issue($p, 'type_mismatch', ['expected' => 'decimal'], $message)
+                : Result::ok($d);
         }));
     }
 
-    // -------------------------------------------------------------------------
-    // Type conversions (return different decoder types)
-    // -------------------------------------------------------------------------
-
-    /** @return IntDecoder<I> */
-    public function toInt(?string $message = null): IntDecoder
-    {
-        return new IntDecoder(CallableDecoder::of(
-            function (mixed $in, ?Path $path = null) use ($message): Result {
-                return $this->decode($in, $path)->flatMap(
-                    function (string $v) use ($path, $message): Result {
-                        $p = $path ?? Path::root();
-                        if (!is_numeric($v) || str_contains($v, '.')) {
-                            return Result::failWith(
-                                $p,
-                                ErrorCodes::TypeMismatch->value,
-                                ErrorCodes::TypeMismatch->value,
-                                $message,
-                                'expected integer',
-                                ['expected' => 'integer'],
-                            );
-                        }
-                        return Result::ok((int) $v);
-                    },
-                );
-            },
-        ));
-    }
-
-    /** @return FloatDecoder<I> */
-    public function toFloat(?string $message = null): FloatDecoder
-    {
-        return new FloatDecoder(CallableDecoder::of(
-            function (mixed $in, ?Path $path = null) use ($message): Result {
-                return $this->decode($in, $path)->flatMap(
-                    function (string $v) use ($path, $message): Result {
-                        $p = $path ?? Path::root();
-                        if (!is_numeric($v)) {
-                            return Result::failWith(
-                                $p,
-                                ErrorCodes::TypeMismatch->value,
-                                ErrorCodes::TypeMismatch->value,
-                                $message,
-                                'expected number',
-                                ['expected' => 'float'],
-                            );
-                        }
-                        return Result::ok((float) $v);
-                    },
-                );
-            },
-        ));
-    }
-
-    /** @return BoolDecoder<I> */
+    /** true, 1, yes or on, and false, 0, no or off, ASCII case-insensitively. */
     public function toBool(?string $message = null): BoolDecoder
     {
-        return new BoolDecoder(CallableDecoder::of(
-            function (mixed $in, ?Path $path = null) use ($message): Result {
-                return $this->decode($in, $path)->flatMap(
-                    function (string $v) use ($path, $message): Result {
-                        $p = $path ?? Path::root();
-                        $parsed = match (strtolower($v)) {
-                            'true', '1', 'yes', 'on'  => true,
-                            'false', '0', 'no', 'off' => false,
-                            default                    => null,
-                        };
-                        if ($parsed === null) {
-                            return Result::failWith(
-                                $p,
-                                ErrorCodes::TypeMismatch->value,
-                                ErrorCodes::TypeMismatch->value,
-                                $message,
-                                'expected boolean',
-                                ['expected' => 'boolean'],
-                            );
-                        }
-                        return Result::ok($parsed);
-                    },
-                );
-            },
-        ));
+        return new BoolDecoder($this->followedBy(static function (string $v, Path $p) use ($message): Result {
+            return match (strtr($v, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')) {
+                'true', '1', 'yes', 'on' => Result::ok(true),
+                'false', '0', 'no', 'off' => Result::ok(false),
+                default => Result::issue($p, 'type_mismatch', ['expected' => 'boolean'], $message),
+            };
+        }));
     }
-
-    /** @return Decoder<I, \DateTimeImmutable> */
-    public function toDate(string $format = 'Y-m-d', ?string $message = null): Decoder
-    {
-        return CallableDecoder::of(
-            function (mixed $in, ?Path $path = null) use ($format, $message): Result {
-                return $this->decode($in, $path)->flatMap(
-                    function (string $v) use ($format, $path, $message): Result {
-                        $p = $path ?? Path::root();
-                        $date = \DateTimeImmutable::createFromFormat($format, $v);
-                        if ($date === false || $date->format($format) !== $v) {
-                            // PHP-specific date parsing, not Raoh's ISO-8601 date() — kept on
-                            // the plain invalid_format key, not invalid_format.date.
-                            return Result::failWith(
-                                $p,
-                                ErrorCodes::InvalidFormat->value,
-                                ErrorCodes::InvalidFormat->value,
-                                $message,
-                                "expected date in format {$format}",
-                                ['format' => $format],
-                            );
-                        }
-                        return Result::ok($date);
-                    },
-                );
-            },
-        );
-    }
-
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
 
     /**
-     * @return Decoder<I, string>
+     * An ISO 8601 calendar date, year-mm-dd.
+     *
+     * @return TemporalDecoder<LocalDate>
      */
-    private function chain(callable $constraint): Decoder
+    public function date(?string $message = null): TemporalDecoder
     {
-        return CallableDecoder::of(
-            fn (mixed $in, ?Path $path = null): Result => $this->decode($in, $path)
-                ->flatMap(fn (string $v): Result => $constraint($v, $path ?? Path::root())),
+        return $this->temporal(LocalDate::parse(...), 'invalid_format.date', $message);
+    }
+
+    /**
+     * A local time, hh:mm, hh:mm:ss or hh:mm:ss with a fraction.
+     *
+     * @return TemporalDecoder<LocalTime>
+     */
+    public function time(?string $message = null): TemporalDecoder
+    {
+        return $this->temporal(LocalTime::parse(...), 'invalid_format.time', $message);
+    }
+
+    /**
+     * A local date-time: a date, T, and a time.
+     *
+     * @return TemporalDecoder<LocalDateTime>
+     */
+    public function dateTime(?string $message = null): TemporalDecoder
+    {
+        return $this->temporal(LocalDateTime::parse(...), 'invalid_format.date_time', $message);
+    }
+
+    /**
+     * A date-time and an offset, which is kept, not applied.
+     *
+     * @return TemporalDecoder<OffsetDateTime>
+     */
+    public function offsetDateTime(?string $message = null): TemporalDecoder
+    {
+        return $this->temporal(OffsetDateTime::parse(...), 'invalid_format.offset_date_time', $message);
+    }
+
+    /**
+     * An instant: a date-time with seconds and an offset, which is applied.
+     *
+     * @return TemporalDecoder<Instant>
+     */
+    public function iso8601(?string $message = null): TemporalDecoder
+    {
+        return $this->temporal(Instant::parse(...), 'invalid_format.instant', $message);
+    }
+
+    /**
+     * @template U of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant
+     * @param callable(string): (U|null) $parse
+     * @return TemporalDecoder<U>
+     */
+    private function temporal(callable $parse, string $messageKey, ?string $message): TemporalDecoder
+    {
+        return TemporalDecoder::over(
+            $this->followedBy(static function (string $v, Path $p) use ($parse, $messageKey, $message): Result {
+                $t = $parse($v);
+                return $t === null ? Result::issue($p, $messageKey, [], $message) : Result::ok($t);
+            }),
+            $parse,
         );
+    }
+
+    /**
+     * @return \Closure(string, Path): Result<int>
+     */
+    private static function integer(int $min, int $max, string $expected, ?string $message): \Closure
+    {
+        return static function (string $v, Path $p) use ($min, $max, $expected, $message): Result {
+            if (preg_match('/\A([+-]?)0*([0-9]+)\z/', $v, $m) !== 1) {
+                return Result::issue($p, 'type_mismatch', ['expected' => $expected], $message);
+            }
+            $n = Integers::read($m[1] === '-', $m[2], $min, $max);
+            return $n === null
+                ? Result::issue($p, 'type_mismatch.numeric_range', ['expected' => $expected], $message)
+                : Result::ok($n);
+        };
     }
 }

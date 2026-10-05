@@ -4,10 +4,6 @@ parameters:
         - src
     treatPhpDocTypesAsCertain: false
     ignoreErrors:
-        # FieldDecoder return type: anonymous class in ArrayDecoders::field() cannot carry generic annotations.
-        # Extracting to a named class would fix this but breaks the encapsulation of the internal implementation.
-        - '#return type with generic interface Raoh\\FieldDecoder does not specify its types#'
-        - '#Class AnonymousClass.* uses generic trait Raoh\\DecoderTrait but does not specify its types#'
         # CallableDecoder/CallableEncoder::of() return type: inferred from closure, specifying generics causes downstream mismatches
         - '#Method Raoh\\CallableDecoder::of\(\) return type with generic class Raoh\\CallableDecoder does not specify its types#'
         - '#Method Raoh\\CallableEncoder::of\(\) return type with generic class Raoh\\CallableEncoder does not specify its types#'

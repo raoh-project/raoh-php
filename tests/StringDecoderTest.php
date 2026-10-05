@@ -110,14 +110,20 @@ class StringDecoderTest extends TestCase
 
     public function testPattern(): void
     {
-        $r = string_()->pattern('/^\d{3}-\d{4}$/')->decode('123-4567');
+        // The pattern language of the specification, matched against the whole string.
+        $r = string_()->pattern('\d{3}-\d{4}')->decode('123-4567');
         $this->assertInstanceOf(Ok::class, $r);
 
-        $r2 = string_()->pattern('/^\d{3}-\d{4}$/')->decode('invalid');
+        $r2 = string_()->pattern('\d{3}-\d{4}')->decode('invalid');
         $this->assertInstanceOf(Err::class, $r2);
-        // pattern() keeps the plain code as its messageKey: the regex it carries
-        // is not something a shared message catalog can turn into a sentence.
         $this->assertSame(ErrorCodes::InvalidFormat->value, $r2->issues->toArray()[0]->messageKey);
+        $this->assertSame(['pattern' => '\d{3}-\d{4}'], $r2->issues->toArray()[0]->meta);
+    }
+
+    public function testPatternRefusesWhatTheLanguageDoesNotHave(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        string_()->pattern('(?=a)a');
     }
 
     public function testUuid(): void
@@ -236,11 +242,10 @@ class StringDecoderTest extends TestCase
         $this->assertSame('invalid_format', $r->issues->toArray()[0]->code);
     }
 
-    public function testUrlPortOutOfRange(): void
+    public function testUrlPortIsNotCheckedAgainstARange(): void
     {
-        $r = string_()->url()->decode('http://example.com:99999');
-        $this->assertInstanceOf(Err::class, $r);
-        $this->assertSame('invalid_format', $r->issues->toArray()[0]->code);
+        // RFC 3986's port is any run of digits; the specification does not check a range.
+        $this->assertInstanceOf(Ok::class, string_()->url()->decode('http://example.com:99999'));
     }
 
     public function testUrlPortBoundary(): void

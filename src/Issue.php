@@ -35,6 +35,37 @@ final readonly class Issue
         return new self($path, $code, $message, $meta, false, $messageKey);
     }
 
+    /**
+     * An issue of a variant the decoders give: its code is the message key up to the first dot,
+     * and its message is the one given or else the one the English catalogue derives.
+     *
+     * @param array<string, mixed> $meta
+     */
+    public static function derived(Path $path, string $messageKey, array $meta = [], ?string $message = null): self
+    {
+        $code = explode('.', $messageKey, 2)[0];
+        if ($message !== null) {
+            return new self($path, $code, $message, $meta, true, $messageKey);
+        }
+        $derived = Messages::english()->format($messageKey, $code, $meta) ?? $messageKey;
+        return new self($path, $code, $derived, $meta, false, $messageKey);
+    }
+
+    /**
+     * An issue with a message given by its maker, which resolving leaves as it is.
+     *
+     * @param array<string, mixed> $meta
+     */
+    public static function custom(
+        Path $path,
+        string $code,
+        string $message,
+        array $meta = [],
+        ?string $messageKey = null,
+    ): self {
+        return new self($path, $code, $message, $meta, true, $messageKey);
+    }
+
     public function withCustomMessage(string $message): self
     {
         return new self($this->path, $this->code, $message, $this->meta, true, $this->messageKey);

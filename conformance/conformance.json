@@ -1,0 +1,12 @@
+{
+  "implementation": "raoh-php",
+  "specification": "0.9",
+  "profiles": [
+    "core",
+    "encode",
+    "messages-en",
+    "messages-ja"
+  ],
+  "unsupported_features": {},
+  "divergences": {}
+}

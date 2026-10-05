@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Raoh;
 
 /**
- * @template T
+ * @template-covariant T
  * @extends Result<T>
  */
 final readonly class Ok extends Result

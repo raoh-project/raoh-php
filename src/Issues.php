@@ -119,7 +119,7 @@ final class Issues
             'path'    => $i->path->toJsonPointer(),
             'code'    => $i->code,
             'message' => $i->message,
-            'meta'    => $i->meta,
+            'meta'    => array_map(Internal\Wire::of(...), $i->meta),
         ], $this->items);
     }
 }

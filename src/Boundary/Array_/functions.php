@@ -5,37 +5,59 @@ declare(strict_types=1);
 namespace Raoh\Boundary\Array_;
 
 use Raoh\Builtin\BoolDecoder;
+use Raoh\Builtin\DecimalDecoder;
+use Raoh\Builtin\DictDecoder;
+use Raoh\Builtin\DoubleDecoder;
 use Raoh\Builtin\FloatDecoder;
 use Raoh\Builtin\IntDecoder;
+use Raoh\Builtin\ListDecoder;
+use Raoh\Builtin\LongDecoder;
+use Raoh\Builtin\ObjectDecoder;
 use Raoh\Builtin\StringDecoder;
 use Raoh\Combinator\Combiner;
 use Raoh\Decoder;
+use Raoh\Decoders;
 use Raoh\FieldDecoder;
 
 /**
  * Import these functions with:
- *   use function Raoh\Boundary\Array_\{field, string_, int_, float_, bool_, combine, nested, list_of, nullable};
+ *   use function Raoh\Boundary\Array_\{field, string_, int_, object, combine, list_of, nullable};
  */
 
-/** @return StringDecoder<mixed> */
 function string_(): StringDecoder
 {
     return ArrayDecoders::string_();
 }
 
-/** @return IntDecoder<mixed> */
+/** An int32. */
 function int_(): IntDecoder
 {
     return ArrayDecoders::int_();
 }
 
-/** @return FloatDecoder<mixed> */
+/** An int64. */
+function long(): LongDecoder
+{
+    return ArrayDecoders::long();
+}
+
+/** A float32, given as a {@see \Raoh\Value\Float32}. */
 function float_(): FloatDecoder
 {
     return ArrayDecoders::float_();
 }
 
-/** @return BoolDecoder<mixed> */
+/** A float64, a PHP float. */
+function double(): DoubleDecoder
+{
+    return ArrayDecoders::double();
+}
+
+function decimal(): DecimalDecoder
+{
+    return ArrayDecoders::decimal();
+}
+
 function bool_(): BoolDecoder
 {
     return ArrayDecoders::bool_();
@@ -44,7 +66,7 @@ function bool_(): BoolDecoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @return FieldDecoder&Decoder<array<string, mixed>, T>
+ * @return FieldDecoder<mixed, T>
  */
 function field(string $name, Decoder $dec): FieldDecoder
 {
@@ -54,9 +76,9 @@ function field(string $name, Decoder $dec): FieldDecoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @return Decoder<array<string, mixed>, T|null>
+ * @return FieldDecoder<mixed, T|null>
  */
-function optional_field(string $name, Decoder $dec): Decoder
+function optional_field(string $name, Decoder $dec): FieldDecoder
 {
     return ArrayDecoders::optionalField($name, $dec);
 }
@@ -64,16 +86,16 @@ function optional_field(string $name, Decoder $dec): Decoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @return Decoder<array<string, mixed>, \Raoh\Absent|\Raoh\PresentNull|\Raoh\Present<T>>
+ * @return FieldDecoder<mixed, \Raoh\Absent|\Raoh\PresentNull|\Raoh\Present<T>>
  */
-function optional_nullable_field(string $name, Decoder $dec): Decoder
+function optional_nullable_field(string $name, Decoder $dec): FieldDecoder
 {
     return ArrayDecoders::optionalNullableField($name, $dec);
 }
 
 /**
  * @template T
- * @param Decoder<array<string, mixed>, T> $dec
+ * @param Decoder<mixed, T> $dec
  * @return Decoder<mixed, T>
  */
 function nested(Decoder $dec): Decoder
@@ -84,11 +106,47 @@ function nested(Decoder $dec): Decoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @return Decoder<mixed, list<T>>
+ * @return ListDecoder<T>
  */
-function list_of(Decoder $dec): Decoder
+function list_of(Decoder $dec): ListDecoder
 {
     return ArrayDecoders::listOf($dec);
+}
+
+/**
+ * @template T
+ * @param Decoder<mixed, T> $dec
+ * @return DictDecoder<T>
+ */
+function dict(Decoder $dec): DictDecoder
+{
+    return ArrayDecoders::dict($dec);
+}
+
+/** @param Decoder<mixed, mixed> ...$fields */
+function object(Decoder ...$fields): ObjectDecoder
+{
+    return ArrayDecoders::object(...$fields);
+}
+
+/**
+ * @param FieldDecoder<mixed, mixed> ...$fields
+ * @return Decoder<mixed, list<mixed>>
+ */
+function strict_object(FieldDecoder ...$fields): Decoder
+{
+    return Decoders::strictObject(...$fields);
+}
+
+/**
+ * @template T
+ * @param Decoder<mixed, T> $dec
+ * @param list<string> $known
+ * @return Decoder<mixed, T>
+ */
+function strict(Decoder $dec, array $known): Decoder
+{
+    return Decoders::strict($dec, $known);
 }
 
 /**
@@ -108,19 +166,47 @@ function combine(Decoder ...$decoders): Combiner
 }
 
 /**
- * @template T of \UnitEnum
- * @param class-string<T> $enumClass
+ * @template T
+ * @param Decoder<mixed, T> ...$candidates
  * @return Decoder<mixed, T>
  */
-function enum_of(string $enumClass): Decoder
+function one_of(Decoder ...$candidates): Decoder
 {
-    return ArrayDecoders::enumOf($enumClass);
+    return Decoders::oneOf(...$candidates);
 }
 
-/** @return Decoder<mixed, mixed> */
-function literal(mixed $expected): Decoder
+/**
+ * @param array<string, Decoder<mixed, mixed>> $variants
+ * @return Decoder<mixed, mixed>
+ */
+function discriminate(string $field, array $variants): Decoder
 {
-    return ArrayDecoders::literal($expected);
+    return Decoders::discriminate($field, $variants);
+}
+
+/**
+ * @param Decoder<mixed, string> $tag
+ * @param array<string, Decoder<mixed, mixed>> $variants
+ * @return Decoder<mixed, mixed>
+ */
+function discriminate_by(string $field, Decoder $tag, array $variants): Decoder
+{
+    return Decoders::discriminateBy($field, $tag, $variants);
+}
+
+/**
+ * @param list<string>|class-string<\UnitEnum> $symbols
+ * @return Decoder<mixed, mixed>
+ */
+function enum_of(array|string $symbols, ?StringDecoder $string = null, ?string $message = null): Decoder
+{
+    return ArrayDecoders::enumOf($symbols, $string, $message);
+}
+
+/** @return Decoder<mixed, string> */
+function literal(string $expected, ?StringDecoder $string = null, ?string $message = null): Decoder
+{
+    return ArrayDecoders::literal($expected, $string, $message);
 }
 
 /** @return Decoder<mixed, string> */

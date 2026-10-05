@@ -46,6 +46,79 @@ trait DecoderTrait
     }
 
     /**
+     * Fails, at this decoder's path, with an issue whose message is the one given, when the
+     * predicate does not hold of the value.
+     *
+     * @param callable(T): bool $predicate
+     * @param array<string, mixed>|\Closure(T): array<string, mixed> $meta
+     * @return Decoder<I, T>
+     */
+    public function refine(
+        callable $predicate,
+        string $code,
+        string $message,
+        array|\Closure $meta = [],
+        ?string $messageKey = null,
+    ): Decoder {
+        return CallableDecoder::of(
+            fn (mixed $in, ?Path $path = null): Result => $this->decode($in, $path)->flatMap(
+                static fn (mixed $v): Result => $predicate($v)
+                    ? Result::ok($v)
+                    : Result::failCustom(
+                        $path ?? Path::root(),
+                        $code,
+                        $message,
+                        is_array($meta) ? $meta : $meta($v),
+                        $messageKey,
+                    ),
+            ),
+        );
+    }
+
+    /**
+     * Null for a null input; anything else, an absent value included, goes to this decoder.
+     *
+     * @return Decoder<I, T|null>
+     */
+    public function nullable(): Decoder
+    {
+        return Decoders::nullable($this);
+    }
+
+    /**
+     * The default for a null or absent input; anything else goes to this decoder.
+     *
+     * @param T $default
+     * @return Decoder<I, T>
+     */
+    public function withDefault(mixed $default): Decoder
+    {
+        return Decoders::withDefault($this, $default);
+    }
+
+    /**
+     * The fallback in place of any failure.
+     *
+     * @param T $fallback
+     * @return Decoder<I, T>
+     */
+    public function recover(mixed $fallback): Decoder
+    {
+        return Decoders::recover($this, $fallback);
+    }
+
+    /**
+     * What the function computes from the issues, in place of any failure.
+     *
+     * @param callable(Issues): T $recovery
+     * @return Decoder<I, T>
+     */
+    public function recoverWith(callable $recovery): Decoder
+    {
+        return Decoders::recoverWith($this, $recovery);
+    }
+
+    /**
      * @template U
      * @param Decoder<T, U> $next
      * @return Decoder<I, U>

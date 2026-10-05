@@ -1,18 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Method Raoh\\FieldDecoder@anonymous/Boundary/Array_/ArrayDecoders\.php\:130\:\:__construct\(\) has parameter \$dec with generic interface Raoh\\Decoder but does not specify its types\: I, T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Boundary/Array_/ArrayDecoders.php
-
-		-
-			message: '#^Unable to resolve the template type I in call to static method Raoh\\Decoders\:\:strict\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: src/Combinator/Combiner.php
-
-		-
 			message: '#^Method Raoh\\Result\:\:traverse\(\) should return Raoh\\Result\<list\<U\>\> but returns Raoh\\Err\<never\>\|Raoh\\Ok\<list\<mixed\>\>\.$#'
 			identifier: return.type
 			count: 1

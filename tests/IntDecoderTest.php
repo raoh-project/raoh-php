@@ -21,11 +21,12 @@ class IntDecoderTest extends TestCase
         $this->assertSame(42, $r->value);
     }
 
-    public function testDecodeNumericString(): void
+    public function testNumericStringIsNotANumber(): void
     {
+        // A string is a string: form data is read with string_()->toInt().
         $r = int_()->decode('42');
-        $this->assertInstanceOf(Ok::class, $r);
-        $this->assertSame(42, $r->value);
+        $this->assertInstanceOf(Err::class, $r);
+        $this->assertSame(['expected' => 'integer', 'actual' => 'string'], $r->issues->toArray()[0]->meta);
     }
 
     public function testRequiredOnNull(): void

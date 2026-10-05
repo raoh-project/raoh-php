@@ -1,9 +1,9 @@
 # raoh-php
 
-[![License](https://img.shields.io/github/license/kawasima/raoh)](LICENSE)
+[![License](https://img.shields.io/github/license/raoh-project/raoh-php)](LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 
-PHP port of [Raoh](https://github.com/kawasima/raoh) — a decoder library for turning untyped boundary input into typed domain values.
+PHP implementation of [Raoh](https://github.com/raoh-project/raoh-specification) — a decoder library for turning untyped boundary input into typed domain values. It is checked against the [Raoh Specification](https://github.com/raoh-project/raoh-specification), as Raoh for Java, TypeScript, Go and Rust are, so the same input gives the same values and the same issues in all of them.
 
 It is built around a parse-don't-validate approach:
 
@@ -22,8 +22,10 @@ If you are coming from a validator-oriented library, the main difference in feel
 
 ## Requirements
 
-- PHP 8.2+
+- 64-bit PHP 8.2+
 - Composer
+
+raoh-php depends on [`raoh/notation-199x`](https://github.com/raoh-project/notation-199x), which reads text by the rules Raoh and Souther share: the Unicode 18.0.0 `White_Space` set, case mapping and normalization, lengths in Unicode scalar values, the pattern language of the specification, and the grammar of dates and times. PHP's own `trim`, `mb_strtolower`, `Normalizer` and PCRE answer by the Unicode version and the libraries PHP was built with, so a string read on one server would be read otherwise on another. Neither package needs a PHP extension: not mbstring, intl, bcmath or gmp.
 
 Install and run tests:
 
@@ -36,46 +38,25 @@ composer install
 
 ```
 src/
-├── Result.php              # abstract readonly class (Ok / Err parent)
-├── Ok.php                  # final readonly class Ok
-├── Err.php                 # final readonly class Err
-├── Path.php                # JSON Pointer path (immutable cons-list)
-├── Issue.php               # single error (path, code, messageKey, message, meta)
-├── Issues.php              # error collection (accumulation)
-├── Decoder.php             # interface Decoder
-├── DecoderTrait.php        # map / flatMap / pipe / asList defaults
-├── CallableDecoder.php     # closure → Decoder adapter
-├── Encoder.php             # interface Encoder
-├── CallableEncoder.php     # closure → Encoder adapter
-├── ErrorCodes.php          # enum ErrorCodes: string
-├── MessageKeys.php         # enum MessageKeys: string — refines a code into its failing constraint
-├── Decoders.php            # utility: lazy / withDefault / recover / oneOf
-├── StaticConstructor.php   # trait for first-class callable constructors
-├── Presence.php            # tri-state presence base
-├── Absent.php              # field not present
-├── PresentNull.php         # field explicitly null
-├── Present.php             # field present with a value
-│
-├── Builtin/
-│   ├── StringDecoder.php
-│   ├── IntDecoder.php
-│   ├── FloatDecoder.php
-│   └── BoolDecoder.php
-│
-├── Combinator/
-│   └── Combiner.php        # variadic applicative combinator
-│
+├── Result.php, Ok.php, Err.php   # the result of decoding
+├── Path.php                      # JSON Pointer path (immutable cons-list)
+├── Issue.php, Issues.php         # an issue (path, code, messageKey, message, meta), and a list of them
+├── Messages.php                  # the English and Japanese message catalogues
+├── Decoder.php, DecoderTrait.php # interface Decoder; map / flatMap / refine / nullable / withDefault / recover
+├── Decoders.php                  # every constructor and combinator
+├── Absent.php, PresentNull.php, Present.php   # tri-state presence
+├── Input/                        # the input model: Json::parse, JsonNumber, JsonObject
+├── Value/                        # Decimal, Float32, and Temporal/ (LocalDate, LocalTime, ...)
+├── Builtin/                      # StringDecoder, IntDecoder, LongDecoder, FloatDecoder, DoubleDecoder,
+│                                 # DecimalDecoder, BoolDecoder, TemporalDecoder, ListDecoder, DictDecoder,
+│                                 # ObjectDecoder
+├── Field/                        # Field, OptionalField, OptionalNullableField
+├── Combinator/Combiner.php       # combine(...)->map(fn(...$values))
 └── Boundary/
-    ├── Array_/
-    │   ├── functions.php       # decoder use function imports
-    │   ├── ArrayDecoders.php
-    │   └── Encode/
-    │       └── functions.php   # encoder use function imports
-    └── Json/
-        ├── functions.php       # decoder use function imports
-        ├── JsonDecoders.php
-        └── Encode/
-            └── functions.php   # encoder use function imports
+    ├── Array_/                   # use function imports, and Encode/
+    └── Json/                     # from_json and use function imports, and Encode/
+resources/messages/               # en.properties, ja.properties
+conformance/                      # the runner of the specification's cases
 ```
 
 ## Core Model
@@ -102,9 +83,12 @@ Decoding returns a value instead of throwing:
 Each error includes:
 
 - `path`
-- `code`
+- `code`, the class of problem, such as `out_of_range`
+- `messageKey`, the kind of problem within its class, such as `out_of_range.minimum`
 - `message`
-- `meta`
+- `meta`, such as the bound that was not met
+
+The codes, message keys and metadata are those of the Raoh Specification. A message is derived from the English catalogue when the issue is made, unless one was given: every operation that checks something takes an optional last argument, the message to give in place of the catalogue's. `$issues->resolve(Messages::japanese())` writes every derived message from the Japanese catalogue, and leaves given ones as they are.
 
 Paths use JSON Pointer notation (RFC 6901), for example:
 
@@ -129,7 +113,13 @@ A decoder reads an input value and produces either:
 - a typed value wrapped in `Ok`
 - structured issues wrapped in `Err`
 
-Two boundary implementations are included:
+A decoder reads the input model of the specification: what a JSON text denotes, with every number kept as it is written. `Raoh\Input\Json::parse($text)` reads a JSON text into it, every number a `JsonNumber` holding its lexeme and every object a `JsonObject` holding its members in order; `from_json($decoder)` does the same for a decoder. `json_decode` cannot be used for this: it turns `1.50` into 1.5, `-0` into 0, and an integer past 2⁶³ into a float, and it gives `{}` and `[]` as the same PHP value.
+
+A decoder also reads the PHP values an application already has: an associative array or a `stdClass` is an object, a list is an array, and an int or a float is a number, read as the number it already is. `[]` is both an empty object and an empty array, since PHP does not tell them apart. A string is a string: `int_()` rejects `"42"`, and form data is read with `string_()->toInt()`.
+
+The values decoders give are a PHP `int` for `int_()` (int32) and `long()` (int64), a PHP `float` for `double()`, a `Raoh\Value\Float32` for `float_()` (PHP has no float32 of its own), a `Raoh\Value\Decimal` for `decimal()`, which keeps the scale it was written with, and the `LocalDate`, `LocalTime`, `LocalDateTime`, `OffsetDateTime` and `Instant` of `Raoh\Value\Temporal` for the temporal operations of a string.
+
+Two boundary modules give the same decoders as functions:
 
 - `Raoh\Boundary\Array_` — PHP arrays and form data
 - `Raoh\Boundary\Json` — raw JSON strings
@@ -229,7 +219,7 @@ Example failure shape:
 
 ```json
 [
-  { "path": "/email", "code": "invalid_format", "message": "not a valid email address", "meta": {} }
+  { "path": "/email", "code": "invalid_format", "message": "not a valid email", "meta": {} }
 ]
 ```
 
@@ -256,72 +246,43 @@ This is useful for:
 
 ## Built-in Decoders
 
-### String Capabilities
+Every operation that checks something takes an optional last argument, the message to give in place of the catalogue's.
 
-`StringDecoder` supports:
+### Strings
 
-- `nonBlank()`
-- `allowBlank()`
-- `minLength(...)`
-- `maxLength(...)`
-- `fixedLength(...)`
-- `pattern(...)`
-- `startsWith(...)`
-- `endsWith(...)`
-- `includes(...)`
-- `oneOf(...)`
-- `email()`
-- `url()`
-- `ip()`
-- `ipv4()`
-- `ipv6()`
-- `uuid()`
-- `ulid()`
-- `trim()`
-- `toLowerCase()`
-- `toUpperCase()`
-- `toInt()`
-- `toFloat()`
-- `toBool()`
-- `toDate(...)`
+`string_()` gives a `StringDecoder`:
 
-### Numeric Capabilities
+- transforms: `trim()`, `toLowerCase()`, `toUpperCase()`, `normalize($form = 'NFC')` — by Unicode 18.0.0, with no language tailoring
+- checks: `nonBlank()`, `minLength(...)`, `maxLength(...)`, `fixedLength(...)` (lengths in Unicode scalar values), `oneOf([...])`, `startsWith(...)`, `endsWith(...)`, `includes(...)`, `pattern(...)`
+- formats: `email()`, `ipv4()`, `ipv6()`, `ip()`, `ulid()`, `cuid()`, `uuid()` (gives the UUID in lower case), `url()`, `uri()`
+- conversions: `toInt()`, `toLong()`, `toDecimal()`, `toBool()`, and `date()`, `time()`, `dateTime()`, `offsetDateTime()`, `iso8601()` (an instant), which give a `TemporalDecoder` with `before(...)`, `after(...)` and `between(...)`
 
-`IntDecoder` supports:
+`pattern(...)` takes the pattern language of the specification ([pattern.md](https://github.com/raoh-project/raoh-specification/blob/main/spec/pattern.md)), not PCRE's: it is matched against the whole string, with no delimiters and no flags, in time linear in the string. `pattern('[0-9]{3}-[0-9]{4}')`. A pattern the language does not have, such as a lookahead or a back reference, is refused with an `\InvalidArgumentException`.
 
-- `min(...)`
-- `max(...)`
-- `range(...)`
-- `positive()`
-- `negative()`
-- `nonNegative()`
-- `nonPositive()`
-- `multipleOf(...)`
-- `oneOf(...)`
+### Numbers
 
-`FloatDecoder` supports:
+`int_()` (int32), `long()` (int64), `float_()` (float32), `double()` (float64) and `decimal()` give decoders with `min(...)`, `max(...)`, `range(...)`, `positive()`, `negative()`, `nonNegative()` and `nonPositive()`. The integers and floats have `oneOf([...])`; the integers and `decimal()` have `multipleOf(...)`; `decimal()` has `scale(...)`.
 
-- `min(...)`
-- `max(...)`
-- `range(...)`
-- `positive()`
-- `scale(...)`
+An integer decoder accepts a number written as an integer, with no fraction and no exponent: `1` but not `1.0`. Floats are compared in the float order of the value model, in which -0 is less than +0, so `negative()` accepts -0. Decimals are compared by value: `1.5` and `1.50` are equal for `min(...)`, and different decimals.
 
-### Boolean Capabilities
+### Booleans
 
-`BoolDecoder` supports:
+`bool_()` gives a `BoolDecoder` with `isTrue()` and `isFalse()`.
 
-- `isTrue()`
-- `isFalse()`
+### Lists and dictionaries
+
+`list_of($dec)` gives a `ListDecoder` with `nonempty()`, `minSize(...)`, `maxSize(...)`, `fixedSize(...)`, `unique()`, `contains(...)`, `containsAll([...])` and `toSet()`. `dict($dec)` decodes every member of an object and gives a PHP array keyed by member name, with `nonempty()`, `minSize(...)`, `maxSize(...)` and `fixedSize(...)`.
 
 ## Object Decoding
 
 raoh-php distinguishes these cases:
 
-- `field($name, $dec)` — required field
-- `optional_field($name, $dec)` — missing field is allowed, returns `null`
+- `field($name, $dec)` — required field: a missing member is given to `$dec` as absent, which most decoders report as `required`
+- `optional_field($name, $dec)` — a missing member, or an input that is not an object, gives `null`
 - `nullable($dec)` — `null` value is allowed
 - `optional_nullable_field($name, $dec)` — tri-state presence
+
+`object(...$fields)` gives the fields' values as a list, and `combine(...$fields)->map(fn ($a, $b) => ...)` spreads them into a function. A decoder that is not a field reads the whole input, as a flat field does in the specification.
 
 Tri-state presence returns one of:
 
@@ -346,7 +307,7 @@ $dec = optional_nullable_field('nickname', string_());
 use Raoh\Issues;
 use Raoh\Path;
 use Raoh\Result;
-use function Raoh\Boundary\Array_\{field, string_, float_, combine, enum_of, nested};
+use function Raoh\Boundary\Array_\{field, string_, double, combine, enum_of, nested};
 
 enum Currency: string
 {
@@ -382,7 +343,7 @@ class User
 
 function moneyDecoder(): \Raoh\Decoder {
     return combine(
-        field('amount',   float_()->positive()),
+        field('amount',   double()->positive()),
         field('currency', enum_of(Currency::class)),
     )->flatMap(Money::parse(...));
 }
@@ -487,7 +448,7 @@ raoh-php returns both issues:
 ```php
 $err->issues->flatten();
 // [
-//   '/email' => ['not a valid email address'],
+//   '/email' => ['not a valid email'],
 //   '/age'   => ['must be between 0 and 150'],
 // ]
 ```
@@ -497,22 +458,31 @@ $err->issues->flatten();
 The `Decoders` class and boundary functions provide reusable combinators.
 
 - `Decoders::lazy(callable $fn)` — for recursive decoders
-- `Decoders::withDefault(Decoder $dec, mixed $default)` — fallback for missing/null-like failures
-- `Decoders::recover(Decoder $dec, mixed $fallback)` — fallback for any decoding failure
-- `Decoders::oneOf(Decoder ...$candidates)` — tries multiple candidates; returns `one_of_failed` if all fail
-- `enum_of(string $enumClass)` — matches enum values; backed enums by value, pure enums by case name
-- `literal(mixed $value)` — matches one exact value
+- `Decoders::withDefault(Decoder $dec, mixed $default)`, `$dec->withDefault($default)` — the default for a null or absent input
+- `Decoders::recover(Decoder $dec, mixed $fallback)`, `$dec->recover($fallback)` — the fallback for any decoding failure; `recoverWith(fn (Issues $issues) => ...)` computes it
+- `Decoders::oneOf(Decoder ...$candidates)` — the first candidate that succeeds; `one_of_failed` with each candidate's issues if all fail
+- `discriminate($field, ['circle' => $circle, 'square' => $square])` — the variant the tag member names; `discriminate_by($field, $tag, $variants)` reads the tag with a decoder of its own
+- `enum_of(['RED', 'GREEN'])` or `enum_of(Color::class)` — one of the symbols, ASCII case-insensitively: a string-backed enum's symbols are its values, any other enum's its case names
+- `literal('v1')` — exactly that string
+- `$dec->refine($predicate, $code, $message)` — an issue of your own when the predicate does not hold
 
-### `Decoders::strict(...)`
+### `strict(...)`
 
 Reject unknown fields:
 
 ```php
+strict_object(
+    field('name', string_()),
+    field('age',  int_()),
+);
+
 combine(
     field('name', string_()),
     field('age',  int_()),
 )->strict(fn($name, $age) => new Person($name, $age));
 ```
+
+`strict($dec, ['name', 'age'])` does the same around any decoder, such as a `discriminate`.
 
 ### `lazy(...)`
 
@@ -521,49 +491,44 @@ For recursive structures:
 ```php
 use Raoh\Decoders;
 
+// An arrow function would capture $commentDecoder while it is still null, so take it by reference.
 $commentDecoder = null;
 $commentDecoder = combine(
     field('body',    string_()->nonBlank()),
-    Decoders::withDefault(field('replies', list_of(Decoders::lazy(fn() => $commentDecoder))), []),
+    field('replies', list_of(Decoders::lazy(function () use (&$commentDecoder) {
+        return $commentDecoder;
+    }))->withDefault([])),
 )->map(fn($body, $replies) => new Comment($body, $replies));
 ```
 
-### `one_of(...)`
+### `discriminate(...)` and `one_of(...)`
 
 For discriminated union decoding:
 
 ```php
-use Raoh\Decoders;
-
-$contactDecoder = Decoders::oneOf(
-    combine(
-        field('kind',  literal('email')),
-        field('value', string_()->email()),
-    )->map(fn($kind, $value) => new EmailContact($value)),
-    combine(
-        field('kind',  literal('phone')),
-        field('value', string_()->pattern('/^\d+$/')),
-    )->map(fn($kind, $value) => new PhoneContact($value)),
-);
+$contactDecoder = discriminate('kind', [
+    'email' => combine(field('value', string_()->email()))->map(fn($v) => new EmailContact($v)),
+    'phone' => combine(field('value', string_()->pattern('[0-9]+')))->map(fn($v) => new PhoneContact($v)),
+]);
 ```
 
-If all candidates fail, `one_of_failed` is returned with candidate-specific errors in `meta.candidates`.
+A tag that names no variant gives `not_allowed` at `/kind`. When there is no tag, `one_of(...)` tries each candidate in turn; if all fail, `one_of_failed` is returned with candidate-specific errors in `meta.candidates`.
 
-### `Decoders::withDefault(...)` vs `Decoders::recover(...)`
+### `withDefault(...)` vs `recover(...)`
 
-Use `Decoders::withDefault(...)` when a value is conceptually optional and you want a fallback for missing/null-like cases:
+Use `withDefault(...)` when a value is conceptually optional and you want a fallback for a missing or null value. It goes on the field's decoder, which is what sees the missing member:
 
 ```php
-field('role', Decoders::withDefault(enum_of(Role::class), Role::Member))
+field('role', enum_of(Role::class)->withDefault(Role::Member))
 ```
 
-Use `Decoders::recover(...)` when you want to tolerate any decoding failure:
+Use `recover(...)` when you want to tolerate any decoding failure:
 
 ```php
-Decoders::recover(field('pageSize', int_()->range(1, 100)), 20)
+field('pageSize', int_()->range(1, 100)->recover(20))
 ```
 
-`Decoders::recover(...)` is more permissive. `Decoders::withDefault(...)` is stricter.
+`recover(...)` is more permissive. `withDefault(...)` is stricter: a value of the wrong kind is still reported.
 
 ## `StaticConstructor` Trait
 
@@ -602,9 +567,9 @@ raoh-php ships two boundary modules for different input types.
 For PHP arrays (form data, deserialized YAML, framework request objects, etc.):
 
 ```php
-use function Raoh\Boundary\Array_\{field, string_, int_, float_, bool_, combine,
-    optional_field, optional_nullable_field, nullable, nested, list_of,
-    enum_of, literal, bytes};
+use function Raoh\Boundary\Array_\{field, string_, int_, long, float_, double, decimal, bool_,
+    object, strict_object, strict, combine, optional_field, optional_nullable_field, nullable,
+    nested, list_of, dict, one_of, discriminate, discriminate_by, enum_of, literal, bytes};
 ```
 
 ### `Raoh\Boundary\Json`
@@ -616,9 +581,9 @@ use function Raoh\Boundary\Json\{from_json, field, string_, int_, float_, bool_,
     optional_field, nullable, nested, list_of};
 ```
 
-`from_json($dec)` wraps any array decoder to accept a raw JSON string as input.
+`from_json($dec)` wraps any decoder to accept a raw JSON string as input. It reads the text with `Raoh\Input\Json::parse()`, which keeps every number as it is written; text that is not JSON gives `invalid_format`.
 
-The Json boundary exposes a subset of the Array_ helpers. `optional_nullable_field`, `enum_of`, `literal`, and `bytes` are available only in `Raoh\Boundary\Array_`; use them inside a `from_json()` decoder when you need them with JSON input.
+The Json boundary exposes a subset of the Array_ helpers. The decoders are the same, so use the others from `Raoh\Boundary\Array_` or `Raoh\Decoders` inside a `from_json()` decoder.
 
 ### `Raoh\Boundary\Array_\Encode` (Encoder)
 
@@ -703,7 +668,7 @@ Useful helpers on `Issues`:
 
 - `flatten()` — path-keyed list of messages, convenient for form-like UIs
 - `format()` — nested structure with `_errors` keys
-- `toJsonList()` — flat list of `{path, code, message, meta}` objects, convenient for APIs
+- `toJsonList()` — flat list of `{path, code, message, meta}` objects, convenient for APIs; a decimal or a temporal value in `meta` is written as its text, and a float JSON cannot carry (-0, NaN, ±Infinity) as a tag such as `{"float": "-0"}`
 - `toArray()` — access the raw list of `Issue` objects
 
 ## Supported Usage Patterns
@@ -768,6 +733,18 @@ combine(
 ```php
 $result = string_()->email()->decode($input);
 ```
+
+## Conformance
+
+raoh-php is checked against the [Raoh Specification](https://github.com/raoh-project/raoh-specification) at the commit `conformance/spec.lock` pins, with the verifier of that commit:
+
+```sh
+scripts/conformance.sh
+```
+
+Raoh Specification 0.9 — core: conformant; encode: conformant; messages-en: conformant; messages-ja: conformant.
+
+The script needs git, jq and Go besides PHP. `RAOH_SPECIFICATION_DIR` names a checkout of the specification to use instead of cloning one; it has to be at the pinned commit.
 
 ## Design Direction
 

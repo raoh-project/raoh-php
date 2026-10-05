@@ -29,25 +29,25 @@ function from_json(Decoder $dec, int $depth = 512): Decoder
     return JsonDecoders::fromJson($dec, $depth);
 }
 
-/** @return StringDecoder<mixed> */
+/** @return StringDecoder */
 function string_(): StringDecoder
 {
     return JsonDecoders::string_();
 }
 
-/** @return IntDecoder<mixed> */
+/** @return IntDecoder */
 function int_(): IntDecoder
 {
     return JsonDecoders::int_();
 }
 
-/** @return FloatDecoder<mixed> */
+/** @return FloatDecoder */
 function float_(): FloatDecoder
 {
     return JsonDecoders::float_();
 }
 
-/** @return BoolDecoder<mixed> */
+/** @return BoolDecoder */
 function bool_(): BoolDecoder
 {
     return JsonDecoders::bool_();
@@ -56,7 +56,7 @@ function bool_(): BoolDecoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @return FieldDecoder&Decoder<array<string, mixed>, T>
+ * @return FieldDecoder<mixed, T>
  */
 function field(string $name, Decoder $dec): FieldDecoder
 {
