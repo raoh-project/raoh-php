@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Raoh\Input;
 
+use Raoh\Internal\Number\Lexeme;
+
 /**
  * A number of the input model, kept as it is written.
  *
@@ -13,11 +15,9 @@ namespace Raoh\Input;
  */
 final readonly class JsonNumber
 {
-    private const GRAMMAR = '/\A-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\z/';
-
     public function __construct(public string $lexeme)
     {
-        if (preg_match(self::GRAMMAR, $lexeme) !== 1) {
+        if (!Lexeme::is($lexeme)) {
             throw new \InvalidArgumentException("not a JSON number: {$lexeme}");
         }
     }

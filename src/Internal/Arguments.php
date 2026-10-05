@@ -60,25 +60,4 @@ final class Arguments
         }
         return array_map(static fn (mixed $v): string => self::text($v, "each of {$what}"), $values);
     }
-
-    /**
-     * A value the library keeps and may write into an issue, such as an element `contains()`
-     * looks for or an issue's metadata: every string in it, and every key of an array in it, is
-     * text. Other values are taken as they are.
-     */
-    public static function value(mixed $value, string $what): mixed
-    {
-        if (is_string($value)) {
-            return self::text($value, $what);
-        }
-        if (is_array($value)) {
-            foreach ($value as $k => $v) {
-                if (is_string($k)) {
-                    self::text($k, "a key of {$what}");
-                }
-                self::value($v, $what);
-            }
-        }
-        return $value;
-    }
 }

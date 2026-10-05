@@ -49,6 +49,23 @@ class HostValueTest extends TestCase
         $this->assertSame('/photo', $r->issues->toArray()[0]->path->toJsonPointer());
     }
 
+    public function testNothingIsRequiredWhicheverFacadeReadsIt(): void
+    {
+        // One rule, Input::mismatch(), for every decoder that reports the kind of its input.
+        foreach ([
+            'from_json' => \Raoh\Boundary\Json\from_json(string_()),
+            'nested' => \Raoh\Boundary\Array_\nested(object(field('a', string_()))),
+            'bytes' => \Raoh\Boundary\Array_\bytes(),
+            'string_' => string_(),
+        ] as $name => $decoder) {
+            foreach ([null, new \Raoh\Absent()] as $nothing) {
+                $r = $decoder->decode($nothing);
+                $this->assertInstanceOf(Err::class, $r, $name);
+                $this->assertSame('required', $r->issues->toArray()[0]->code, $name);
+            }
+        }
+    }
+
     public function testAFloatThatIsNotFiniteIsATypeMismatch(): void
     {
         $nan = double()->decode(NAN);

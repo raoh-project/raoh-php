@@ -117,12 +117,10 @@ final class Floats
      */
     public static function fromLexeme(string $lexeme, int $width): float
     {
-        if (preg_match('/\A(-?)(0|[1-9][0-9]*)(?:\.([0-9]+))?(?:[eE]([+-]?)([0-9]+))?\z/', $lexeme, $m) !== 1) {
-            throw new \InvalidArgumentException("not a JSON number: '$lexeme'");
-        }
-        $fraction = $m[3] ?? '';
-        $exponent = self::exponentOf($m[4] ?? '', $m[5] ?? '');
-        return self::nearest($m[1] === '-', $m[2] . $fraction, $exponent - strlen($fraction), $width);
+        $parts = Lexeme::read($lexeme) ?? throw new \InvalidArgumentException("not a JSON number: '$lexeme'");
+        [$negative, $integer, $fraction, $exponentSign, $exponentDigits] = $parts;
+        $exponent = self::exponentOf($exponentSign, $exponentDigits);
+        return self::nearest($negative, $integer . $fraction, $exponent - strlen($fraction), $width);
     }
 
     /** A binary64 rounded to the nearest binary32, held as a PHP float. */

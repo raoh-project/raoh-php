@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Raoh\Builtin;
 
 use Raoh\Internal\Arguments;
+
 /**
  * @extends BaseDecoder<bool>
  */

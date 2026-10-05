@@ -8,6 +8,7 @@ use Raoh\Absent;
 use Raoh\Input\JsonNumber;
 use Raoh\Input\JsonObject;
 use Raoh\Internal\Number\Floats;
+use Raoh\Internal\Wire;
 use Raoh\Issue;
 use Raoh\Issues;
 use Raoh\Present;
@@ -225,7 +226,7 @@ final class Value
             is_int($v) => new JsonNumber((string) $v),
             is_float($v) => self::float($v, 64),
             $v instanceof Float32 => self::float($v->value, 32),
-            $v instanceof Decimal, $v instanceof \Stringable => (string) $v,
+            Wire::isText($v) => (string) $v,
             $v instanceof Issues => array_map(static fn (Issue $i): JsonObject => self::issue($i, false), $v->toArray()),
             is_array($v) && array_is_list($v) => array_map(self::meta(...), $v),
             is_array($v) => new JsonObject(array_map(self::meta(...), $v)),

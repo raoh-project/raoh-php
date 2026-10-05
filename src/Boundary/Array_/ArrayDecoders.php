@@ -114,11 +114,8 @@ final class ArrayDecoders
     {
         return CallableDecoder::of(static function (mixed $in, ?Path $path = null) use ($dec): Result {
             $p = $path ?? Path::root();
-            if ($in === null || $in instanceof Absent) {
-                return Result::issue($p, 'required');
-            }
             if (Input::members($in) === null) {
-                return Result::issue($p, 'type_mismatch', ['expected' => 'object', 'actual' => Input::kind($in)]);
+                return Input::mismatch($in, $p, 'object');
             }
             return $dec->decode($in, $p);
         });
@@ -192,11 +189,8 @@ final class ArrayDecoders
     {
         return CallableDecoder::of(static function (mixed $in, ?Path $path = null): Result {
             $p = $path ?? Path::root();
-            if ($in === null || $in instanceof Absent) {
-                return Result::issue($p, 'required');
-            }
             if (!is_string($in)) {
-                return Result::issue($p, 'type_mismatch', ['expected' => 'string', 'actual' => Input::kind($in)]);
+                return Input::mismatch($in, $p, 'string');
             }
             return Result::ok($in);
         });

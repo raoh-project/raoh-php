@@ -46,7 +46,9 @@ final class Values
             $v instanceof Present => 'P' . self::key($v->value),
             $v instanceof \UnitEnum => 'u' . $v::class . '::' . $v->name,
             is_array($v) => self::arrayKey($v),
-            $v instanceof \Stringable => 'o' . $v::class . ':' . $v,
+            Wire::isText($v) => 'o' . $v::class . ':' . $v,
+            // Another object is the same as itself alone: its string, if it has one, says nothing
+            // the value model knows, and could change.
             is_object($v) => 'r' . spl_object_id($v),
             // A resource is the same as itself alone, open or closed.
             default => 'z' . get_debug_type($v) . ':' . (int) $v,

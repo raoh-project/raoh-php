@@ -47,6 +47,28 @@ class InvariantTest extends TestCase
         yield 'a message key that only starts like its code' => [static fn (): Issue => Issue::of(Path::root(), 'too_small', 'm', [], 'too_smallish')];
         yield 'metadata indexed, not named' => [static fn (): Issue => Issue::of(Path::root(), 'required', 'm', [1, 2])];
         yield 'metadata holding a non-UTF-8 string' => [static fn (): Issue => Issue::of(Path::root(), 'required', 'm', ['a' => ["\xff"]])];
+        yield 'metadata holding a resource' => [static fn (): Issue => Issue::of(
+            Path::root(),
+            'custom',
+            'm',
+            ['value' => fopen('php://memory', 'r')],
+        )];
+        yield 'metadata holding a Stringable that writes what is not UTF-8' => [static fn (): Issue => Issue::of(
+            Path::root(),
+            'custom',
+            'm',
+            ['value' => new class () implements \Stringable {
+                public function __toString(): string
+                {
+                    return "\xff";
+                }
+            }],
+        )];
+        yield 'metadata holding an object the value model has no place for' => [static fn (): Issue => Issue::of(Path::root(), 'custom', 'm', ['at' => new \DateTimeImmutable()])];
+        yield 'metadata holding a closure' => [static fn (): Issue => Issue::of(Path::root(), 'custom', 'm', ['f' => static fn (): int => 1])];
+        yield 'metadata holding a list with a resource in it' => [static fn (): Issue => Issue::of(Path::root(), 'custom', 'm', ['list' => [1, STDIN]])];
+        yield 'an element contains() would keep, outside the value model' => [static fn (): mixed => \Raoh\Decoders::list_(\Raoh\Decoders::int_())->contains(new \stdClass())];
+        yield 'metadata refine() would give, outside the value model' => [static fn (): mixed => \Raoh\Decoders::int_()->refine(static fn (): bool => true, 'custom', 'm', ['r' => STDIN])];
         yield 'a resolver that writes a non-UTF-8 message' => [static fn (): Issue => Issue::of(Path::root(), 'required', 'm')->resolve(static fn (): string => "\xff")];
         yield 'issues holding what is not an issue' => [static fn (): Issues => Issues::of(['required'])];
         yield 'a failure with no issue' => [static fn (): Err => Result::err(Issues::empty())];
@@ -66,6 +88,38 @@ class InvariantTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $make();
+    }
+
+    /**
+     * Every value an issue's metadata may hold, which the issue keeps and json_encode writes.
+     *
+     * @return iterable<string, array{mixed}>
+     */
+    public static function metadata(): iterable
+    {
+        yield 'null' => [null];
+        yield 'a bool' => [true];
+        yield 'an int' => [PHP_INT_MIN];
+        yield 'a float' => [0.1];
+        yield 'negative zero' => [-0.0];
+        yield 'NaN' => [NAN];
+        yield 'infinity' => [-INF];
+        yield 'a float32' => [new \Raoh\Value\Float32(0.1)];
+        yield 'a string' => ['日本語'];
+        yield 'a decimal' => [\Raoh\Value\Decimal::of('150', 2)];
+        yield 'a date' => [\Raoh\Value\Temporal\LocalDate::parse('2024-02-29')];
+        yield 'an instant' => [\Raoh\Value\Temporal\Instant::parse('2024-02-29T00:00:00Z')];
+        yield 'an enum case' => [\Raoh\ErrorCodes::Required];
+        yield 'issues' => [Issues::of([Issue::of(Path::of('a'), 'required', 'is required')])];
+        yield 'a list' => [[1, 'a', [0.5]]];
+        yield 'a map' => [['a' => 1, 'b' => ['c' => null]]];
+    }
+
+    #[DataProvider('metadata')]
+    public function testMetadataTheIssueKeepsIsJson(mixed $value): void
+    {
+        $issues = Issues::of([Issue::of(Path::root(), 'custom', 'm', ['value' => $value])]);
+        $this->assertNotFalse(json_encode($issues->toJsonList()), json_last_error_msg());
     }
 
     public function testAnObjectKeepsItsMembersInOrder(): void

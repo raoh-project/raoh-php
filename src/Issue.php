@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Wire;
 use Raoh\Internal\Arguments;
+
 final readonly class Issue
 {
     public readonly string $messageKey;
@@ -12,7 +14,8 @@ final readonly class Issue
     /**
      * An issue holds what a client writes as JSON, so its code, message key, message and metadata
      * are refused here when they are not: a string that is not UTF-8, metadata that is not a map
-     * from names, and a message key that does not refine its code (it is the code, or the code, a
+     * from names or holds a value {@see Wire} does not write, and a message key that does not
+     * refine its code (it is the code, or the code, a
      * dot and more, as the specification's issues.md says).
      *
      * @param array<string, mixed> $meta
@@ -37,9 +40,7 @@ final readonly class Issue
                 throw new \InvalidArgumentException("an issue's metadata is named, not indexed by {$name}");
             }
             Arguments::text($name, "the name of an issue's metadata");
-            if (!$value instanceof Issues) {
-                Arguments::value($value, "the metadata {$name}");
-            }
+            Wire::check($value, "the metadata {$name}");
         }
     }
 

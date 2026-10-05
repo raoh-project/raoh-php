@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Value;
 
+use Raoh\Internal\Number\Lexeme;
 use Raoh\Internal\Number\BigNat;
 
 /**
@@ -42,10 +43,8 @@ final readonly class Decimal
      */
     public static function fromLexeme(string $jsonNumber): ?self
     {
-        if (preg_match('/\A(-?)(0|[1-9][0-9]*)(?:\.([0-9]+))?(?:[eE]([+-]?)([0-9]+))?\z/', $jsonNumber, $m) !== 1) {
-            throw new \InvalidArgumentException("not a JSON number: '$jsonNumber'");
-        }
-        return self::fromParts($m[1] === '-', $m[2], $m[3] ?? '', $m[4] ?? '', $m[5] ?? '');
+        $parts = Lexeme::read($jsonNumber) ?? throw new \InvalidArgumentException("not a JSON number: '$jsonNumber'");
+        return self::fromParts(...$parts);
     }
 
     /**

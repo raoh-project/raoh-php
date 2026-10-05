@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Raoh\Internal;
 
+use Raoh\Result;
+use Raoh\Path;
+use Raoh\Err;
 use Raoh\Absent;
 use Raoh\Input\JsonNumber;
 use Raoh\Input\JsonObject;
@@ -110,6 +113,30 @@ final class Input
             is_float($in) && is_finite($in) => Floats::messageForm($in, 64),
             default => null,
         };
+    }
+
+    /**
+     * Whether there is no value: null, or a member that is not there. The decoders of values give
+     * `required` for both.
+     */
+    public static function isNothing(mixed $in): bool
+    {
+        return $in === null || $in instanceof Absent;
+    }
+
+    /**
+     * What a decoder of values gives for input it does not read: `required` for nothing, and
+     * otherwise `type_mismatch` naming the kind it expected and the kind it found. Every decoder
+     * that reports the kind of its input reports it through this.
+     *
+     * @return Err<never>
+     */
+    public static function mismatch(mixed $in, Path $p, string $expected): Err
+    {
+        if (self::isNothing($in)) {
+            return Result::issue($p, 'required');
+        }
+        return Result::issue($p, 'type_mismatch', ['expected' => $expected, 'actual' => self::kind($in)]);
     }
 
     /**

@@ -35,7 +35,7 @@ final class JsonDecoders
         return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($dec, $depth): Result {
             $p = $path ?? Path::root();
             if (!is_string($in)) {
-                return Result::issue($p, 'type_mismatch', ['expected' => 'string', 'actual' => Input::kind($in)]);
+                return Input::mismatch($in, $p, 'string');
             }
             try {
                 $decoded = Json::parse($in, $depth);

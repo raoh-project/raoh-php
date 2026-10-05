@@ -30,6 +30,8 @@ Follows the [Raoh Specification](https://github.com/raoh-project/raoh-specificat
 - A PHP float is read as the canonical decimal of the float64 it is, by the specification's algorithm, whatever `serialize_precision` and `precision` the php.ini sets
 - An argument of the wrong type, such as a non-string allowed value of `string_()->oneOf()`, a variant of `discriminate()` that is not a decoder, or a bound of another temporal type, is refused with an `\InvalidArgumentException` when the decoder is built, not when a value is decoded
 - Every string the library keeps is UTF-8, as every string of the input model is: a message given to an operation, a field name, a literal, a prefix, a symbol, a variant name, a known field, an issue's code, message key, message and metadata, a path segment, a template and a property name that is not UTF-8 is refused with an `\InvalidArgumentException` where it is given, so that no issue holds what a client cannot write as JSON
+- What an issue's metadata may hold is defined once (`Internal\Wire`), and an issue refuses the rest when it is made, rather than json_encode failing when the issues are written: null, bools, ints, floats, `Float32`, UTF-8 strings, `Decimal`, the temporal values, enum cases, the issues `one_of_failed` lists, and lists and maps of these. A resource, an object of another class and a `Stringable` are refused; `contains()` and `refine()` refuse them when built
+- `from_json()` gives `required` for a null or absent input, as every other decoder does, where it gave `type_mismatch`
 - A public value type holds its own invariants, whoever makes it: a `JsonObject` refuses a member name given twice (`1` and `"1"` included), an `Issue` a message key that does not refine its code, `Issues::of()` what is not an `Issue`, and an `Err` no issue at all
 - `asList()` reads an array as `list_of()` does, giving `required` or `type_mismatch` for other input
 - `Issues::toJsonList()` writes a decimal or a temporal value in `meta` as its text, and a float JSON cannot carry as a tag such as `{"float": "-0"}`
@@ -64,6 +66,7 @@ Types and classes:
 
 - The built-in decoders (`StringDecoder`, `IntDecoder`, `FloatDecoder`, `BoolDecoder` and the new ones) are made by `string_()`, `int_()` and the other factories; their constructors take the step that runs, not a `Decoder` to wrap, so `new StringDecoder($decoder)` no longer works. Apply the operations of a decoder of your own with `map()`, `flatMap()` or `pipe()`
 - They are no longer generic over their input: write `StringDecoder`, not `StringDecoder<mixed>`, in PHPDoc
+- An `Issue` whose metadata holds what JSON cannot carry, such as a `DateTime`, a resource or another object, is refused; write such a value as a string or one of the library's values
 - An `Issue` whose message key is not its code, or its code, a dot and more, is refused (`Issue::of($p, 'required', 'm', [], 'blank')`), as is an `Err` with no issue, `Result::err(Issues::empty())`
 - Removed `StringDecoder::allowBlank()`, `toFloat()` and `toDate($format)` (use `date()`, which reads ISO 8601), and `FloatDecoder::scale()` (use `decimal()->scale()`)
 - Requires a 64-bit PHP and `raoh/notation-199x`

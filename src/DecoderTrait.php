@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Wire;
 use Raoh\Internal\Arguments;
+
 /**
  * Provides default combinators for any class implementing Decoder.
  *
@@ -67,7 +69,10 @@ trait DecoderTrait
             Arguments::text($messageKey, "the issue's message key");
         }
         if (is_array($meta)) {
-            Arguments::value($meta, "the issue's metadata");
+            foreach ($meta as $name => $value) {
+                Arguments::text((string) $name, "the name of the issue's metadata");
+                Wire::check($value, "the issue's metadata {$name}");
+            }
         }
         return CallableDecoder::of(
             fn (mixed $in, ?Path $path = null): Result => $this->decode($in, $path)->flatMap(

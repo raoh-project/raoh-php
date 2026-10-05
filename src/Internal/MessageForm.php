@@ -11,7 +11,8 @@ use Raoh\Internal\Number\Floats;
  * issues.md).
  *
  * A PHP float is a float64; a float32 is a {@see \Raoh\Value\Float32}. A decimal, a float32 and a
- * temporal value write their own message form as their string. A list writes its elements
+ * temporal value write their own message form as their string; they are the values
+ * {@see Wire::TEXT_VALUES} names, and no other object's string is taken. A list writes its elements
  * between brackets. Other values have no message form.
  *
  * @internal
@@ -31,7 +32,7 @@ final class MessageForm
             is_float($v) => Floats::messageForm($v, 64),
             is_array($v) && array_is_list($v) => self::list($v),
             $v instanceof \UnitEnum => $v->name,
-            $v instanceof \Stringable => (string) $v,
+            Wire::isText($v) => (string) $v,
             default => null,
         };
     }

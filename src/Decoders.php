@@ -46,7 +46,7 @@ final class Decoders
     {
         return new StringDecoder(static function (mixed $in, Path $p): Result {
             $text = Input::text($in);
-            return $text === null ? self::mismatch($in, $p, 'string') : Result::ok($text);
+            return $text === null ? Input::mismatch($in, $p, 'string') : Result::ok($text);
         });
     }
 
@@ -78,9 +78,9 @@ final class Decoders
     public static function decimal(): DecimalDecoder
     {
         return new DecimalDecoder(static function (mixed $in, Path $p): Result {
-            $lexeme = self::isNothing($in) ? null : Input::lexeme($in);
+            $lexeme = Input::isNothing($in) ? null : Input::lexeme($in);
             if ($lexeme === null) {
-                return self::mismatch($in, $p, 'number');
+                return Input::mismatch($in, $p, 'number');
             }
             $d = Decimal::fromLexeme($lexeme);
             return $d === null ? Result::issue($p, 'type_mismatch', ['expected' => 'number', 'actual' => 'number']) : Result::ok($d);
@@ -90,7 +90,7 @@ final class Decoders
     public static function bool_(): BoolDecoder
     {
         return new BoolDecoder(
-            static fn (mixed $in, Path $p): Result => is_bool($in) ? Result::ok($in) : self::mismatch($in, $p, 'boolean'),
+            static fn (mixed $in, Path $p): Result => is_bool($in) ? Result::ok($in) : Input::mismatch($in, $p, 'boolean'),
         );
     }
 
@@ -107,9 +107,9 @@ final class Decoders
     public static function list_(Decoder $element): ListDecoder
     {
         return new ListDecoder(static function (mixed $in, Path $p) use ($element): Result {
-            $elements = self::isNothing($in) ? null : Input::elements($in);
+            $elements = Input::isNothing($in) ? null : Input::elements($in);
             if ($elements === null) {
-                return self::mismatch($in, $p, 'array');
+                return Input::mismatch($in, $p, 'array');
             }
             return Result::traverse(
                 $elements,
@@ -129,9 +129,9 @@ final class Decoders
     public static function dict(Decoder $value): DictDecoder
     {
         return new DictDecoder(static function (mixed $in, Path $p) use ($value): Result {
-            $members = self::isNothing($in) ? null : Input::members($in);
+            $members = Input::isNothing($in) ? null : Input::members($in);
             if ($members === null) {
-                return self::mismatch($in, $p, 'object');
+                return Input::mismatch($in, $p, 'object');
             }
             $issues = Issues::empty();
             $values = [];
@@ -229,7 +229,7 @@ final class Decoders
         return CallableDecoder::of(static function (mixed $in, ?Path $path = null) use ($inner, $knownSet): Result {
             $p = $path ?? Path::root();
             $result = $inner->decode($in, $p);
-            $members = self::isNothing($in) ? null : Input::members($in);
+            $members = Input::isNothing($in) ? null : Input::members($in);
             if ($members === null) {
                 return $result;
             }
@@ -287,7 +287,7 @@ final class Decoders
         self::refuseClosure($fallback, 'withDefault', 'the default value itself');
         $default = $fallback;
         return CallableDecoder::of(
-            static fn (mixed $in, ?Path $path = null): Result => self::isNothing($in)
+            static fn (mixed $in, ?Path $path = null): Result => Input::isNothing($in)
                 ? Result::ok($default)
                 : $dec->decode($in, $path),
         );
@@ -503,9 +503,9 @@ final class Decoders
     private static function integer(int $min, int $max, string $expected): \Closure
     {
         return static function (mixed $in, Path $p) use ($min, $max, $expected): Result {
-            $lexeme = self::isNothing($in) ? null : Input::lexeme($in);
+            $lexeme = Input::isNothing($in) ? null : Input::lexeme($in);
             if ($lexeme === null) {
-                return self::mismatch($in, $p, $expected);
+                return Input::mismatch($in, $p, $expected);
             }
             if (preg_match('/\A(-?)([0-9]+)\z/', $lexeme, $m) !== 1) {
                 return Result::issue($p, 'type_mismatch', ['expected' => $expected, 'actual' => 'number']);
@@ -523,9 +523,9 @@ final class Decoders
     private static function floating(int $width, string $expected): \Closure
     {
         return static function (mixed $in, Path $p) use ($width, $expected): Result {
-            $lexeme = self::isNothing($in) ? null : Input::lexeme($in);
+            $lexeme = Input::isNothing($in) ? null : Input::lexeme($in);
             if ($lexeme === null) {
-                return self::mismatch($in, $p, $expected);
+                return Input::mismatch($in, $p, $expected);
             }
             $v = Floats::fromLexeme($lexeme, $width);
             if (is_infinite($v)) {
@@ -535,28 +535,10 @@ final class Decoders
         };
     }
 
-    /**
-     * `required` for a null or absent input, and otherwise `type_mismatch`.
-     *
-     * @return Err<never>
-     */
-    private static function mismatch(mixed $in, Path $p, string $expected): Err
-    {
-        if (self::isNothing($in)) {
-            return Result::issue($p, 'required');
-        }
-        return Result::issue($p, 'type_mismatch', ['expected' => $expected, 'actual' => Input::kind($in)]);
-    }
-
     private static function refuseClosure(mixed $value, string $form, string $instead): void
     {
         if ($value instanceof \Closure) {
             throw new \InvalidArgumentException("{$form}() takes a value, not a Closure; use {$instead}");
         }
-    }
-
-    private static function isNothing(mixed $in): bool
-    {
-        return $in === null || $in instanceof Absent;
     }
 }

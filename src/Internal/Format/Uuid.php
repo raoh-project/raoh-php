@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Raoh\Internal\Format;
 
 use Raoh\Internal\Text;
+
 /**
  * A UUID as 32 hexadecimal digits in either case grouped 8-4-4-4-12 by hyphens
  * (RFC 9562 section 4), of any version and variant.

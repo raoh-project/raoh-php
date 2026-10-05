@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Raoh;
 
 use Raoh\Internal\Arguments;
+
 final class Path
 {
     private static ?Path $root = null;

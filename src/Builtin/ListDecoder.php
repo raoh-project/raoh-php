@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Wire;
 use Raoh\Internal\Arguments;
 use Raoh\Internal\Values;
 use Raoh\Path;
@@ -73,7 +74,7 @@ final class ListDecoder extends BaseDecoder
     public function contains(mixed $element, ?string $message = null): static
     {
         $message = Arguments::message($message);
-        Arguments::value($element, 'the element');
+        Wire::check($element, 'the element');
         $key = Values::key($element);
         return $this->check(
             static function (array $v) use ($key): bool {
@@ -102,7 +103,7 @@ final class ListDecoder extends BaseDecoder
         if ($elements === []) {
             throw new \InvalidArgumentException('containsAll: the elements must not be empty');
         }
-        Arguments::value($elements, 'the elements');
+        Wire::check($elements, 'the elements');
         $keys = array_map(Values::key(...), $elements);
         return $this->then(static function (array $v, Path $p) use ($elements, $keys, $message): Result {
             $present = [];

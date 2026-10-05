@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Input;
 
+use Raoh\Internal\Number\Lexeme;
 use Raoh\Internal\Text;
 use Raoh\Notation199x\ScalarValues;
 
@@ -20,7 +21,7 @@ use Raoh\Notation199x\ScalarValues;
  */
 final class Json
 {
-    private const NUMBER = '/\G-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/';
+    private const NUMBER = '/\G' . Lexeme::GRAMMAR . '/';
     private const PLAIN = '/\G[^"\\\\\x00-\x1F]*/';
 
     private int $at = 0;

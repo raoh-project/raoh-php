@@ -8,32 +8,108 @@ use Raoh\Internal\Number\Floats;
 use Raoh\Issues;
 use Raoh\Value\Decimal;
 use Raoh\Value\Float32;
+use Raoh\Value\Temporal\Instant;
+use Raoh\Value\Temporal\LocalDate;
+use Raoh\Value\Temporal\LocalDateTime;
+use Raoh\Value\Temporal\LocalTime;
+use Raoh\Value\Temporal\OffsetDateTime;
 
 /**
- * Metadata as values `json_encode` writes the way the specification observes them: a decimal and
- * a temporal value as their text, a float that JSON cannot carry (-0, NaN, ±Infinity) as a tag
- * such as `{"float": "-0"}`, and the issues `one_of_failed` lists as issues are written.
+ * The values an issue's metadata holds, defined once: what {@see check()} admits is exactly what
+ * {@see of()} writes as JSON, since both read a value through the one {@see kind()}.
+ *
+ * They are the values of the specification's value model as raoh-php holds them: null, a bool, an
+ * int, a float (a float64) and a {@see Float32}, a string of Unicode scalar values, a
+ * {@see Decimal}, the five temporal values, an enum case (written by its name), the issues
+ * `one_of_failed` lists, and lists and maps of these with names that are text. Nothing else is:
+ * not a resource, not an object of another class, and not a Stringable, whose text could be
+ * anything and could change between the issue's making and its writing.
+ *
+ * A decimal, a float32 and a temporal value write themselves as text that is ASCII; they are the
+ * only objects whose string the library takes.
  *
  * @internal
  */
 final class Wire
 {
+    /** The objects that are values of the model and write themselves as their text. */
+    public const TEXT_VALUES = [
+        Decimal::class,
+        Float32::class,
+        LocalDate::class,
+        LocalTime::class,
+        LocalDateTime::class,
+        OffsetDateTime::class,
+        Instant::class,
+    ];
+
     private function __construct()
     {
     }
 
+    /**
+     * Refuses, with an \InvalidArgumentException, a value metadata cannot hold.
+     */
+    public static function check(mixed $v, string $what): void
+    {
+        $kind = self::kind($v);
+        if ($kind === null) {
+            throw new \InvalidArgumentException("{$what} is not a value an issue can hold: " . get_debug_type($v)
+                . (is_string($v) ? ' that is not UTF-8' : ''));
+        }
+        if ($kind === 'list' || $kind === 'map') {
+            assert(is_array($v));
+            foreach ($v as $k => $e) {
+                if ($kind === 'map') {
+                    Arguments::text($k, "a name in {$what}");
+                }
+                self::check($e, $what);
+            }
+        }
+    }
+
+    /**
+     * The value as json_encode writes it the way the specification observes it: a decimal and a
+     * temporal value as their text, a float JSON cannot carry (-0, NaN, ±Infinity) as a tag such as
+     * `{"float": "-0"}`, and the issues `one_of_failed` lists as issues are written.
+     */
     public static function of(mixed $v): mixed
     {
+        return match (self::kind($v)) {
+            'scalar' => $v,
+            'float' => self::float($v, 64),
+            'float32' => self::float($v->value, 32),
+            'text' => (string) $v,
+            'enum' => $v->name,
+            'issues' => $v->toJsonList(),
+            'list', 'map' => array_map(self::of(...), $v),
+            default => throw new \LogicException(get_debug_type($v) . ' is not a value an issue can hold'),
+        };
+    }
+
+    /**
+     * Whether the value is one of those that write themselves as their text.
+     */
+    public static function isText(mixed $v): bool
+    {
+        return is_object($v) && in_array($v::class, self::TEXT_VALUES, true);
+    }
+
+    /**
+     * Which of the metadata values it is, or null when it is none.
+     */
+    private static function kind(mixed $v): ?string
+    {
         return match (true) {
-            $v === null, is_bool($v), is_int($v), is_string($v) => $v,
-            is_float($v) => self::float($v, 64),
-            $v instanceof Float32 => self::float($v->value, 32),
-            $v instanceof Decimal => (string) $v,
-            $v instanceof Issues => $v->toJsonList(),
-            $v instanceof \UnitEnum => $v->name,
-            is_array($v) => array_map(self::of(...), $v),
-            $v instanceof \Stringable => (string) $v,
-            default => $v,
+            $v === null, is_bool($v), is_int($v) => 'scalar',
+            is_string($v) => Input::text($v) === null ? null : 'scalar',
+            is_float($v) => 'float',
+            $v instanceof Float32 => 'float32',
+            self::isText($v) => 'text',
+            $v instanceof \UnitEnum => Input::text($v->name) === null ? null : 'enum',
+            $v instanceof Issues => 'issues',
+            is_array($v) => array_is_list($v) ? 'list' : 'map',
+            default => null,
         };
     }
 
