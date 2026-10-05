@@ -57,8 +57,8 @@ final class MessageForm
      */
     public static function utf8(int $cp): string
     {
-        if ($cp < 0 || $cp > 0x10FFFF) {
-            throw new \InvalidArgumentException("not a scalar value: {$cp}");
+        if ($cp < 0 || $cp > 0x10FFFF || ($cp >= 0xD800 && $cp <= 0xDFFF)) {
+            throw new \InvalidArgumentException('not a scalar value: U+' . strtoupper(dechex($cp)));
         }
         if ($cp < 0x80) {
             return chr($cp);

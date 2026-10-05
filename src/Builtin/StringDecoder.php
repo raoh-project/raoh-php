@@ -285,7 +285,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function date(?string $message = null): TemporalDecoder
     {
-        return $this->temporal(LocalDate::parse(...), 'invalid_format.date', $message);
+        return $this->temporal(LocalDate::parse(...), LocalDate::class, 'invalid_format.date', $message);
     }
 
     /**
@@ -295,7 +295,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function time(?string $message = null): TemporalDecoder
     {
-        return $this->temporal(LocalTime::parse(...), 'invalid_format.time', $message);
+        return $this->temporal(LocalTime::parse(...), LocalTime::class, 'invalid_format.time', $message);
     }
 
     /**
@@ -305,7 +305,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function dateTime(?string $message = null): TemporalDecoder
     {
-        return $this->temporal(LocalDateTime::parse(...), 'invalid_format.date_time', $message);
+        return $this->temporal(LocalDateTime::parse(...), LocalDateTime::class, 'invalid_format.date_time', $message);
     }
 
     /**
@@ -315,7 +315,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function offsetDateTime(?string $message = null): TemporalDecoder
     {
-        return $this->temporal(OffsetDateTime::parse(...), 'invalid_format.offset_date_time', $message);
+        return $this->temporal(OffsetDateTime::parse(...), OffsetDateTime::class, 'invalid_format.offset_date_time', $message);
     }
 
     /**
@@ -325,15 +325,16 @@ final class StringDecoder extends BaseDecoder
      */
     public function iso8601(?string $message = null): TemporalDecoder
     {
-        return $this->temporal(Instant::parse(...), 'invalid_format.instant', $message);
+        return $this->temporal(Instant::parse(...), Instant::class, 'invalid_format.instant', $message);
     }
 
     /**
      * @template U of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant
      * @param callable(string): (U|null) $parse
+     * @param class-string<U> $type
      * @return TemporalDecoder<U>
      */
-    private function temporal(callable $parse, string $messageKey, ?string $message): TemporalDecoder
+    private function temporal(callable $parse, string $type, string $messageKey, ?string $message): TemporalDecoder
     {
         return TemporalDecoder::over(
             $this->followedBy(static function (string $v, Path $p) use ($parse, $messageKey, $message): Result {
@@ -341,6 +342,7 @@ final class StringDecoder extends BaseDecoder
                 return $t === null ? Result::issue($p, $messageKey, [], $message) : Result::ok($t);
             }),
             $parse,
+            $type,
         );
     }
 

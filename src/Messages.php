@@ -124,13 +124,20 @@ final class Messages
 
     private static function unescape(string $s): string
     {
+        // A character past the basic plane is written as the \\u escapes of its two surrogates,
+        // as Java writes a properties file; they are read as the one character they encode.
         return preg_replace_callback(
-            '/\\\\(u[0-9A-Fa-f]{4}|.)/s',
+            '/\\\\(u[dD][89abAB][0-9A-Fa-f]{2}\\\\u[dD][c-fC-F][0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|.)/s',
             static function (array $m): string {
                 $e = $m[1];
+                // uXXXX\uYYYY: the two surrogates of one character.
+                if (strlen($e) === 11) {
+                    $high = (int) hexdec(substr($e, 1, 4));
+                    $low = (int) hexdec(substr($e, 7, 4));
+                    return MessageForm::utf8(0x10000 + (($high - 0xD800) << 10) + ($low - 0xDC00));
+                }
                 if ($e[0] === 'u' && strlen($e) === 5) {
-                    $cp = (int) hexdec(substr($e, 1));
-                    return MessageForm::utf8($cp);
+                    return MessageForm::utf8((int) hexdec(substr($e, 1)));
                 }
                 return match ($e) {
                     't' => "\t",

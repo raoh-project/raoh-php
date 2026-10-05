@@ -26,16 +26,21 @@ final class TemporalDecoder extends BaseDecoder
     /** @var \Closure(string): (T|null) */
     private \Closure $parse;
 
+    /** @var class-string<T> */
+    private string $type;
+
     /**
      * @template U of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant
      * @param \Closure(mixed, Path): Result<U> $run
      * @param callable(string): (U|null) $parse reads a bound written as text
+     * @param class-string<U> $type the class of the values, which a bound has to be
      * @return self<U>
      */
-    public static function over(\Closure $run, callable $parse): self
+    public static function over(\Closure $run, callable $parse, string $type): self
     {
         $d = new self($run);
         $d->parse = \Closure::fromCallable($parse);
+        $d->type = $type;
         return $d;
     }
 
@@ -92,10 +97,14 @@ final class TemporalDecoder extends BaseDecoder
             return $holds($v) ? Result::ok($v) : Result::issue($p, $messageKey, [...$meta, 'actual' => $v], $message);
         });
         $d->parse = $this->parse;
+        $d->type = $this->type;
         return $d;
     }
 
     /**
+     * A bound as a value of the decoder's type, refused when the decoder is built rather than
+     * when a value is compared with it: a LocalDateTime is no bound of a decoder of dates.
+     *
      * @param T|string $bound
      * @return T
      */
@@ -104,6 +113,11 @@ final class TemporalDecoder extends BaseDecoder
         if (is_string($bound)) {
             return ($this->parse)($bound)
                 ?? throw new \InvalidArgumentException("not a bound of this decoder: {$bound}");
+        }
+        if (!$bound instanceof $this->type) {
+            throw new \InvalidArgumentException(
+                get_debug_type($bound) . " is not a bound of a decoder of {$this->type}",
+            );
         }
         return $bound;
     }
