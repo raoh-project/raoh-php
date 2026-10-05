@@ -18,7 +18,7 @@ final readonly class Issue
      * refine its code (it is the code, or the code, a
      * dot and more, as the specification's issues.md says).
      *
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      * @throws \InvalidArgumentException
      */
     public function __construct(
@@ -39,7 +39,7 @@ final readonly class Issue
     }
 
     /**
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function of(
         Path $path,
@@ -55,7 +55,7 @@ final readonly class Issue
      * An issue of a variant the decoders give: its code is the message key up to the first dot,
      * and its message is the one given or else the one the English catalogue derives.
      *
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function derived(Path $path, string $messageKey, array $meta = [], ?string $message = null): self
     {
@@ -70,7 +70,7 @@ final readonly class Issue
     /**
      * An issue with a message given by its maker, which resolving leaves as it is.
      *
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function custom(
         Path $path,
@@ -118,7 +118,7 @@ final readonly class Issue
      * issue — including a template it cannot fully interpolate — not merely "no template
      * for this key", so the issue's own message is kept rather than replaced by a worse one.
      *
-     * @param callable(string, array<string, mixed>): ?string $resolver
+     * @param callable(string, array<array-key, mixed>): ?string $resolver
      */
     public function resolve(callable $resolver): self
     {

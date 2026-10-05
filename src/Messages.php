@@ -81,7 +81,7 @@ final class Messages
     /**
      * The message for an issue of that key and code, or null when neither has a template.
      *
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public function format(string $messageKey, string $code, array $meta): ?string
     {
@@ -104,7 +104,7 @@ final class Messages
     /**
      * As a resolver for {@see Issue::resolve()}: the template of exactly this key, filled in.
      *
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public function __invoke(string $key, array $meta): ?string
     {

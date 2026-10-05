@@ -116,7 +116,7 @@ final class Issues
      * `messageKey` refines `code` for the message resolver and is not part of the
      * cross-language JSON API contract. Read it from `Issue::$messageKey` directly.
      *
-     * @return list<array{path: string, code: string, message: string, meta: array<string, mixed>}>
+     * @return list<array{path: string, code: string, message: string, meta: array<array-key, mixed>}>
      */
     public function toJsonList(): array
     {

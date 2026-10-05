@@ -50,7 +50,7 @@ trait DecoderTrait
      * predicate does not hold of the value.
      *
      * @param callable(T): bool $predicate
-     * @param array<string, mixed>|\Closure(T): array<string, mixed> $meta
+     * @param array<array-key, mixed>|\Closure(T): array<array-key, mixed> $meta
      * @return Decoder<I, T>
      */
     public function refine(

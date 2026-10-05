@@ -67,7 +67,7 @@ abstract class BaseDecoder implements Decoder
      * This decoder followed by a check that gives one issue when it fails.
      *
      * @param callable(T): bool $holds
-     * @param array<string, mixed>|\Closure(T): array<string, mixed> $meta
+     * @param array<array-key, mixed>|\Closure(T): array<array-key, mixed> $meta
      */
     protected function check(callable $holds, string $messageKey, array|\Closure $meta, ?string $message): static
     {

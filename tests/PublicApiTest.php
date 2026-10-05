@@ -14,6 +14,28 @@ use PHPUnit\Framework\TestCase;
  */
 class PublicApiTest extends TestCase
 {
+    /**
+     * An issue's metadata is a map whose names PHP may key as ints ("404" is 404), which Issue
+     * accepts; every PHPDoc of metadata says so, so that a static analyser holds callers to what
+     * the code holds them to, and not to less.
+     */
+    public function testEveryPhpDocOfMetadataIsTheContractTheCodeHolds(): void
+    {
+        foreach (PublicApi::entries() as $entry) {
+            foreach ($entry->getParameters() as $p) {
+                if ($p->getName() !== 'meta') {
+                    continue;
+                }
+                $doc = (string) $entry->getDocComment();
+                $this->assertMatchesRegularExpression(
+                    '/@param\s+array<array-key, mixed>(\|\\\\Closure\(T\): array<array-key, mixed>)? \$meta/',
+                    $doc,
+                    EntryPoints::name($entry) . ' documents $meta otherwise',
+                );
+            }
+        }
+    }
+
     public function testThePublicApiIsTheOneRecorded(): void
     {
         $recorded = file_get_contents(__DIR__ . '/public-api.txt');

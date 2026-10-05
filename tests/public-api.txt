@@ -162,7 +162,7 @@ trait Raoh\DecoderTrait {@template I; @template T}
   pipe(Raoh\Decoder $next): Raoh\Decoder {@template U; @param Decoder<T, U> $next; @return Decoder<I, U>}
   recover(mixed $fallback): Raoh\Decoder {@param T $fallback; @return Decoder<I, T>}
   recoverWith(callable $recovery): Raoh\Decoder {@param callable(Issues): T $recovery; @return Decoder<I, T>}
-  refine(callable $predicate, string $code, string $message, Closure|array $meta = [], ?string $messageKey = null): Raoh\Decoder {@param callable(T): bool $predicate; @param array<string, mixed>|\Closure(T): array<string, mixed> $meta; @return Decoder<I, T>}
+  refine(callable $predicate, string $code, string $message, Closure|array $meta = [], ?string $messageKey = null): Raoh\Decoder {@param callable(T): bool $predicate; @param array<array-key, mixed>|\Closure(T): array<array-key, mixed> $meta; @return Decoder<I, T>}
   withDefault(mixed $fallback): Raoh\Decoder {@param T $fallback; @return Decoder<I, T>}
 
 final class Raoh\Decoders
@@ -261,10 +261,10 @@ final class Raoh\Input\JsonObject implements Countable
   names(): array {@return list<string>}
 
 final readonly class Raoh\Issue
-  __construct(Raoh\Path $path, string $code, string $message, array $meta = [], bool $customMessage = false, ?string $messageKey = null): mixed {@param array<string, mixed> $meta}
-  custom(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<string, mixed> $meta}
-  derived(Raoh\Path $path, string $messageKey, array $meta = [], ?string $message = null): Raoh\Issue static {@param array<string, mixed> $meta}
-  of(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<string, mixed> $meta}
+  __construct(Raoh\Path $path, string $code, string $message, array $meta = [], bool $customMessage = false, ?string $messageKey = null): mixed {@param array<array-key, mixed> $meta}
+  custom(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<array-key, mixed> $meta}
+  derived(Raoh\Path $path, string $messageKey, array $meta = [], ?string $message = null): Raoh\Issue static {@param array<array-key, mixed> $meta}
+  of(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<array-key, mixed> $meta}
   readonly $code: string
   readonly $customMessage: bool
   readonly $message: string
@@ -272,7 +272,7 @@ final readonly class Raoh\Issue
   readonly $meta: array
   readonly $path: Raoh\Path
   rebase(Raoh\Path $prefix): Raoh\Issue
-  resolve(callable $resolver): Raoh\Issue {@param callable(string, array<string, mixed>): ?string $resolver}
+  resolve(callable $resolver): Raoh\Issue {@param callable(string, array<array-key, mixed>): ?string $resolver}
   withCustomMessage(string $message): Raoh\Issue
   withMeta(array $meta): Raoh\Issue {@param array<array-key, mixed> $meta}
 
@@ -287,7 +287,7 @@ final class Raoh\Issues
   rebase(Raoh\Path $prefix): Raoh\Issues
   resolve(callable $resolver): Raoh\Issues
   toArray(): array {@return list<Issue>}
-  toJsonList(): array {@return list<array{path: string, code: string, message: string, meta: array<string, mixed>}>}
+  toJsonList(): array {@return list<array{path: string, code: string, message: string, meta: array<array-key, mixed>}>}
 
 enum Raoh\MessageKeys
   case InvalidFormatCuid = 'invalid_format.cuid'
@@ -325,9 +325,9 @@ enum Raoh\MessageKeys
   case TypeMismatchStringKeys = 'type_mismatch.string_keys'
 
 final class Raoh\Messages
-  __invoke(string $key, array $meta): ?string {@param array<string, mixed> $meta}
+  __invoke(string $key, array $meta): ?string {@param array<array-key, mixed> $meta}
   english(): Raoh\Messages static
-  format(string $messageKey, string $code, array $meta): ?string {@param array<string, mixed> $meta}
+  format(string $messageKey, string $code, array $meta): ?string {@param array<array-key, mixed> $meta}
   fromProperties(string $text): Raoh\Messages static
   japanese(): Raoh\Messages static
   templates(): array {@return array<string, string>}
@@ -358,10 +358,10 @@ final readonly class Raoh\PresentNull extends Raoh\Presence
 
 abstract readonly class Raoh\Result {@template-covariant T}
   err(Raoh\Issues $issues): Raoh\Err static {@return Err<never>}
-  fail(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
-  failAtRoot(string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
-  failCustom(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
-  failWith(Raoh\Path $path, string $code, string $messageKey, ?string $message, string $defaultMessage, array $meta = []): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
+  fail(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<array-key, mixed> $meta}
+  failAtRoot(string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<array-key, mixed> $meta}
+  failCustom(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<array-key, mixed> $meta}
+  failWith(Raoh\Path $path, string $code, string $messageKey, ?string $message, string $defaultMessage, array $meta = []): Raoh\Err static {@return Err<never>; @param array<array-key, mixed> $meta}
   flatMap(callable $f): Raoh\Result {@template U; @param callable(T): Result<U> $f; @return Result<U>}
   fold(callable $onOk, callable $onErr): mixed {@template R; @param callable(T): R $onOk; @param callable(Issues): R $onErr; @return R}
   getOrThrow(): mixed {@return T}

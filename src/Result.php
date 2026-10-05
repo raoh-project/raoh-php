@@ -31,7 +31,7 @@ abstract readonly class Result
 
     /**
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function fail(
         Path $path,
@@ -45,7 +45,7 @@ abstract readonly class Result
 
     /**
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function failAtRoot(
         string $code,
@@ -65,7 +65,7 @@ abstract readonly class Result
      * subject to resolution via `$messageKey`.
      *
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function failWith(
         Path $path,
@@ -88,7 +88,7 @@ abstract readonly class Result
      * Fails with one issue whose message the caller gives, which resolving leaves as it is.
      *
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function failCustom(
         Path $path,
@@ -105,7 +105,7 @@ abstract readonly class Result
      *
      * @internal
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function issue(Path $path, string $messageKey, array $meta = [], ?string $message = null): Err
     {

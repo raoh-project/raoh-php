@@ -181,7 +181,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     /**
      * @param callable(T): bool $holds
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     private function bound(callable $holds, string $messageKey, array $meta, ?string $message): static
     {
