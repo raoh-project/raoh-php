@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 use Raoh\Path;
 use Raoh\Result;
 use Raoh\Value\Decimal;
@@ -18,6 +19,7 @@ final class DecimalDecoder extends NumberDecoder
 {
     public function multipleOf(Decimal|string|int $divisor, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $divisor = self::value($divisor);
         if ($divisor->signum() === 0) {
             throw new \InvalidArgumentException('multipleOf: the divisor must not be zero');
@@ -33,6 +35,7 @@ final class DecimalDecoder extends NumberDecoder
     /** Fails when the decimal's scale is greater than max. */
     public function scale(int $max, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->then(static function (Decimal $v, Path $p) use ($max, $message): Result {
             return $v->scale() > $max
                 ? Result::issue($p, 'invalid_scale', ['maxScale' => $max, 'actualScale' => $v->scale()], $message)

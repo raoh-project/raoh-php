@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Arguments;
 /**
  * @template-covariant T
  */
@@ -73,6 +74,7 @@ abstract readonly class Result
         string $defaultMessage,
         array $meta = [],
     ): Err {
+        Arguments::text($defaultMessage, 'the default message');
         if ($message !== null) {
             return new Err(Issues::empty()->add(
                 new Issue($path, $code, $message, $meta, true, $messageKey),

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Input;
 
-use Raoh\Notation199x\ScalarValues;
+use Raoh\Internal\Arguments;
 
 /**
  * An object of the input model: members in the order they were written, no name twice.
@@ -20,15 +20,17 @@ final class JsonObject implements \Countable
 
     /**
      * @param iterable<string|int, mixed> $members
-     * @throws \InvalidArgumentException when a name is not UTF-8, which no member of the input model has
+     * @throws \InvalidArgumentException when a name is not UTF-8 or is given twice, which no object of the input model has
      */
     public function __construct(iterable $members = [])
     {
         $this->members = [];
         foreach ($members as $name => $value) {
             $name = (string) $name;
-            if (ScalarValues::invalidUtf8At($name) !== null) {
-                throw new \InvalidArgumentException('a member name is not UTF-8');
+            Arguments::text($name, 'a member name');
+            // Compared as the names they are: an iterable may give 1 and "1", which PHP keys alike.
+            if (array_key_exists($name, $this->members)) {
+                throw new \InvalidArgumentException("the member name \"{$name}\" is given twice");
             }
             $this->members[$name] = $value;
         }

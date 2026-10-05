@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Field;
 
+use Raoh\Internal\Arguments;
 use Raoh\Decoder;
 use Raoh\DecoderTrait;
 use Raoh\FieldDecoder;
@@ -30,6 +31,7 @@ final class Field implements FieldDecoder
      */
     public function __construct(private readonly string $name, private readonly Decoder $decoder)
     {
+        Arguments::text($name, 'a field name');
     }
 
     public function fieldName(): string

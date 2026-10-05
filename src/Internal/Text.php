@@ -49,6 +49,16 @@ final class Text
     }
 
     /**
+     * A-Z read as a-z, and nothing else: the ASCII case folding the specification asks where it
+     * compares ASCII case-insensitively (`toBool`, `enum`, a URI's scheme, a UUID's digits), which
+     * strtolower does by locale before PHP 8.2.
+     */
+    public static function asciiLower(string $s): string
+    {
+        return strtr($s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+    }
+
+    /**
      * Reads the \u escape that starts at a byte offset: `\uXXXX`, or the two escapes of a
      * surrogate pair, `\uD83D\uDE00`, which stand for the one character they encode, as JSON
      * and a Java properties file both write a character past the basic plane.

@@ -23,6 +23,11 @@ abstract class BaseDecoder implements Decoder
     use DecoderTrait;
 
     /**
+     * Made by the factories of {@see \Raoh\Decoders} and by the operations, which are what keeps
+     * the value a decoder gives of the type its operations take. PHP has no constructor a package
+     * alone may call, so this one is public, and not part of the API.
+     *
+     * @internal
      * @param \Closure(mixed, Path): Result<T> $run
      */
     final public function __construct(private readonly \Closure $run)

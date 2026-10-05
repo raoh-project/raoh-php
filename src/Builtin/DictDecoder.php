@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 use Raoh\Path;
 use Raoh\Result;
 
@@ -19,21 +20,25 @@ final class DictDecoder extends BaseDecoder
     /** Fails when there is no member. */
     public function nonempty(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n >= 1, 'too_small.nonempty', ['min' => 1], $message);
     }
 
     public function minSize(int $min, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n >= $min, 'too_small', ['min' => $min], $message);
     }
 
     public function maxSize(int $max, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n <= $max, 'too_big', ['max' => $max], $message);
     }
 
     public function fixedSize(int $size, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n === $size, 'invalid_size', ['expected' => $size], $message);
     }
 

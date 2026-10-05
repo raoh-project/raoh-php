@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Raoh\Internal\Format;
 
+use Raoh\Internal\Text;
+
 /**
  * The URI production of RFC 3986 section 3, parsed by hand over the ABNF of
  * RFC 3986 Appendix A, in ASCII only. An IPv6 host with a zone identifier is
@@ -39,7 +41,7 @@ final class Uri
         if ($parsed === null) {
             return false;
         }
-        $scheme = strtr($parsed['scheme'], 'HTPS', 'htps');
+        $scheme = Text::asciiLower($parsed['scheme']);
         return ($scheme === 'http' || $scheme === 'https')
             && $parsed['host'] !== null
             && $parsed['host'] !== '';

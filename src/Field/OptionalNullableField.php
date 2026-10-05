@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Field;
 
+use Raoh\Internal\Arguments;
 use Raoh\Absent;
 use Raoh\Decoder;
 use Raoh\DecoderTrait;
@@ -32,6 +33,7 @@ final class OptionalNullableField implements FieldDecoder
      */
     public function __construct(private readonly string $name, private readonly Decoder $decoder)
     {
+        Arguments::text($name, 'a field name');
     }
 
     public function fieldName(): string

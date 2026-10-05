@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 use Raoh\Internal\Number\Floats;
 
 /**
@@ -18,6 +19,7 @@ final class DoubleDecoder extends NumberDecoder
      */
     public function oneOf(array $allowed, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->allowed($allowed, $message);
     }
 

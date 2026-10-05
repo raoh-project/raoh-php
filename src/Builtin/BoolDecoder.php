@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 /**
  * @extends BaseDecoder<bool>
  */
@@ -12,6 +13,7 @@ final class BoolDecoder extends BaseDecoder
     /** Fails for false. */
     public function isTrue(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(
             static fn (bool $v): bool => $v,
             'invalid_value',
@@ -23,6 +25,7 @@ final class BoolDecoder extends BaseDecoder
     /** Fails for true. */
     public function isFalse(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(
             static fn (bool $v): bool => !$v,
             'invalid_value',

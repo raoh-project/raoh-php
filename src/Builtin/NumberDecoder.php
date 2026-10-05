@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 use Raoh\Internal\Values;
 use Raoh\Path;
 use Raoh\Result;
@@ -51,6 +52,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     public function min(mixed $n, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $min = static::value($n);
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $min) >= 0,
@@ -62,6 +64,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     public function max(mixed $n, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $max = static::value($n);
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $max) <= 0,
@@ -73,6 +76,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     public function range(mixed $min, mixed $max, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $min = static::value($min);
         $max = static::value($max);
         if (static::order($min, $max) > 0) {
@@ -88,6 +92,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     public function positive(?string $message = null): static
     {
+        $message = Arguments::message($message);
         $zero = static::zero();
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $zero) > 0,
@@ -99,6 +104,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     public function negative(?string $message = null): static
     {
+        $message = Arguments::message($message);
         $zero = static::zero();
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $zero) < 0,
@@ -110,6 +116,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     public function nonNegative(?string $message = null): static
     {
+        $message = Arguments::message($message);
         $zero = static::zero();
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $zero) >= 0,
@@ -121,6 +128,7 @@ abstract class NumberDecoder extends BaseDecoder
 
     public function nonPositive(?string $message = null): static
     {
+        $message = Arguments::message($message);
         $zero = static::zero();
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $zero) <= 0,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Arguments;
 use Raoh\Builtin\BoolDecoder;
 use Raoh\Builtin\DecimalDecoder;
 use Raoh\Builtin\DictDecoder;
@@ -20,6 +21,7 @@ use Raoh\Field\Field;
 use Raoh\Field\OptionalField;
 use Raoh\Field\OptionalNullableField;
 use Raoh\Internal\Input;
+use Raoh\Internal\Text;
 use Raoh\Internal\Number\Floats;
 use Raoh\Value\Decimal;
 use Raoh\Value\Float32;
@@ -221,11 +223,7 @@ final class Decoders
      */
     public static function strict(Decoder $dec, array $knownFields): Decoder
     {
-        foreach ($knownFields as $name) {
-            if (!is_string($name)) {
-                throw new \InvalidArgumentException('strict: a known field is a string, not ' . get_debug_type($name));
-            }
-        }
+        $knownFields = Arguments::texts($knownFields, 'the known fields');
         $inner = $dec;
         $knownSet = array_flip($knownFields);
         return CallableDecoder::of(static function (mixed $in, ?Path $path = null) use ($inner, $knownSet): Result {
@@ -369,6 +367,7 @@ final class Decoders
      */
     public static function enumOf(array|string $symbols, ?StringDecoder $string = null, ?string $message = null): Decoder
     {
+        $message = Arguments::message($message);
         $byName = [];
         if (is_string($symbols)) {
             if (!enum_exists($symbols)) {
@@ -376,12 +375,12 @@ final class Decoders
             }
             foreach ($symbols::cases() as $case) {
                 $name = $case instanceof \BackedEnum && is_string($case->value) ? $case->value : $case->name;
-                $byName[self::asciiLower($name)] = $case;
+                $byName[Text::asciiLower($name)] = $case;
             }
             $count = count($symbols::cases());
         } else {
-            foreach ($symbols as $name) {
-                $byName[self::asciiLower($name)] = $name;
+            foreach (Arguments::texts($symbols, 'the symbols') as $name) {
+                $byName[Text::asciiLower($name)] = $name;
             }
             $count = count($symbols);
         }
@@ -394,7 +393,7 @@ final class Decoders
         return CallableDecoder::of(
             static fn (mixed $in, ?Path $path = null): Result => $string->decode($in, $path ?? Path::root())
                 ->flatMap(static function (string $v) use ($byName, $allowed, $path, $message): Result {
-                    $key = self::asciiLower($v);
+                    $key = Text::asciiLower($v);
                     return array_key_exists($key, $byName)
                         ? Result::ok($byName[$key])
                         : Result::issue($path ?? Path::root(), 'invalid_format.enum', ['allowed' => $allowed], $message);
@@ -409,6 +408,8 @@ final class Decoders
      */
     public static function literal(string $literal, ?StringDecoder $string = null, ?string $message = null): Decoder
     {
+        $message = Arguments::message($message);
+        $literal = Arguments::text($literal, 'the literal');
         $string ??= self::string_();
         return CallableDecoder::of(
             static fn (mixed $in, ?Path $path = null): Result => $string->decode($in, $path ?? Path::root())
@@ -473,7 +474,9 @@ final class Decoders
         if ($variants === []) {
             throw new \InvalidArgumentException('discriminate takes at least one variant');
         }
+        Arguments::text($field, 'the tag field');
         foreach ($variants as $name => $variant) {
+            Arguments::text((string) $name, 'a variant name');
             if (!$variant instanceof Decoder) {
                 throw new \InvalidArgumentException("discriminate: the variant {$name} is not a decoder");
             }
@@ -555,10 +558,5 @@ final class Decoders
     private static function isNothing(mixed $in): bool
     {
         return $in === null || $in instanceof Absent;
-    }
-
-    private static function asciiLower(string $s): string
-    {
-        return strtr($s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
     }
 }

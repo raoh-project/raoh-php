@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
+
 /**
  * A decoder of int32 values, held in PHP ints.
  *
@@ -16,6 +18,7 @@ final class IntDecoder extends NumberDecoder
 
     public function multipleOf(int $divisor, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->multiple(self::value($divisor), $message);
     }
 
@@ -24,6 +27,7 @@ final class IntDecoder extends NumberDecoder
      */
     public function oneOf(array $allowed, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->allowed($allowed, $message);
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 use Raoh\Path;
 use Raoh\Result;
 use Raoh\Value\Temporal\Instant;
@@ -30,6 +31,9 @@ final class TemporalDecoder extends BaseDecoder
     private string $type;
 
     /**
+     * Made by the temporal operations of {@see StringDecoder}.
+     *
+     * @internal
      * @template U of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant
      * @param \Closure(mixed, Path): Result<U> $run
      * @param callable(string): (U|null) $parse reads a bound written as text
@@ -38,6 +42,9 @@ final class TemporalDecoder extends BaseDecoder
      */
     public static function over(\Closure $run, callable $parse, string $type): self
     {
+        if (!self::isTemporal($type)) {
+            throw new \InvalidArgumentException("{$type} is not a temporal type");
+        }
         $d = new self($run);
         $d->parse = \Closure::fromCallable($parse);
         $d->type = $type;
@@ -47,6 +54,7 @@ final class TemporalDecoder extends BaseDecoder
     /** @param T|string $bound */
     public function before(object|string $bound, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $bound = $this->bound($bound);
         return $this->compared(
             static fn (object $v): bool => self::compare($v, $bound) < 0,
@@ -59,6 +67,7 @@ final class TemporalDecoder extends BaseDecoder
     /** @param T|string $bound */
     public function after(object|string $bound, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $bound = $this->bound($bound);
         return $this->compared(
             static fn (object $v): bool => self::compare($v, $bound) > 0,
@@ -74,6 +83,7 @@ final class TemporalDecoder extends BaseDecoder
      */
     public function between(object|string $from, object|string $to, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $from = $this->bound($from);
         $to = $this->bound($to);
         if (self::compare($from, $to) > 0) {
@@ -120,6 +130,11 @@ final class TemporalDecoder extends BaseDecoder
             );
         }
         return $bound;
+    }
+
+    private static function isTemporal(string $type): bool
+    {
+        return in_array($type, [LocalDate::class, LocalTime::class, LocalDateTime::class, OffsetDateTime::class, Instant::class], true);
     }
 
     /**

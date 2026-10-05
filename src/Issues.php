@@ -23,7 +23,12 @@ final class Issues
      */
     public static function of(array $items): self
     {
-        return new self($items);
+        foreach ($items as $item) {
+            if (!$item instanceof Issue) {
+                throw new \InvalidArgumentException('issues hold Issue values, not ' . get_debug_type($item));
+            }
+        }
+        return new self(array_values($items));
     }
 
     public function add(Issue $issue): self

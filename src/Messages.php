@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Arguments;
 use Raoh\Internal\MessageForm;
 use Raoh\Internal\Text;
 
@@ -45,6 +46,7 @@ final class Messages
      */
     public static function fromProperties(string $text): self
     {
+        Arguments::text($text, 'a properties file');
         $templates = [];
         foreach (preg_split('/\r\n|\r|\n/', $text) ?: [] as $line) {
             $line = ltrim($line, " \t\f");
@@ -69,6 +71,10 @@ final class Messages
      */
     public function with(array $templates): self
     {
+        foreach ($templates as $key => $template) {
+            Arguments::text((string) $key, 'a message key');
+            Arguments::text($template, "the template of {$key}");
+        }
         return new self([...$this->templates, ...$templates]);
     }
 

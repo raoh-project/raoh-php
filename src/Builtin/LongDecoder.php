@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
+
 /**
  * A decoder of int64 values, held in PHP ints.
  *
@@ -13,6 +15,7 @@ final class LongDecoder extends NumberDecoder
 {
     public function multipleOf(int $divisor, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->multiple($divisor, $message);
     }
 
@@ -21,6 +24,7 @@ final class LongDecoder extends NumberDecoder
      */
     public function oneOf(array $allowed, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->allowed($allowed, $message);
     }
 

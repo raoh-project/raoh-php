@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 use Raoh\Internal\Values;
 use Raoh\Path;
 use Raoh\Result;
@@ -20,21 +21,25 @@ final class ListDecoder extends BaseDecoder
     /** Fails when there is no element. */
     public function nonempty(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n >= 1, 'too_small.nonempty', ['min' => 1], $message);
     }
 
     public function minSize(int $min, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n >= $min, 'too_small', ['min' => $min], $message);
     }
 
     public function maxSize(int $max, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n <= $max, 'too_big', ['max' => $max], $message);
     }
 
     public function fixedSize(int $size, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->size(static fn (int $n): bool => $n === $size, 'invalid_size', ['expected' => $size], $message);
     }
 
@@ -44,6 +49,7 @@ final class ListDecoder extends BaseDecoder
      */
     public function unique(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->then(static function (array $v, Path $p) use ($message): Result {
             $seen = [];
             $duplicates = [];
@@ -66,6 +72,8 @@ final class ListDecoder extends BaseDecoder
      */
     public function contains(mixed $element, ?string $message = null): static
     {
+        $message = Arguments::message($message);
+        Arguments::value($element, 'the element');
         $key = Values::key($element);
         return $this->check(
             static function (array $v) use ($key): bool {
@@ -90,9 +98,11 @@ final class ListDecoder extends BaseDecoder
      */
     public function containsAll(array $elements, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         if ($elements === []) {
             throw new \InvalidArgumentException('containsAll: the elements must not be empty');
         }
+        Arguments::value($elements, 'the elements');
         $keys = array_map(Values::key(...), $elements);
         return $this->then(static function (array $v, Path $p) use ($elements, $keys, $message): Result {
             $present = [];

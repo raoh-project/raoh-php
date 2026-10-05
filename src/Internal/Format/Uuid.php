@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Internal\Format;
 
+use Raoh\Internal\Text;
 /**
  * A UUID as 32 hexadecimal digits in either case grouped 8-4-4-4-12 by hyphens
  * (RFC 9562 section 4), of any version and variant.
@@ -24,6 +25,6 @@ final class Uuid
         if (preg_match('/\A[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\z/', $s) !== 1) {
             return null;
         }
-        return strtr($s, 'ABCDEF', 'abcdef');
+        return Text::asciiLower($s);
     }
 }

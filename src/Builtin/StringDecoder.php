@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Builtin;
 
+use Raoh\Internal\Arguments;
 use Raoh\Internal\Format\Cuid;
 use Raoh\Internal\Format\Email;
 use Raoh\Internal\Format\Ip;
@@ -81,12 +82,14 @@ final class StringDecoder extends BaseDecoder
     /** Fails for a string that is empty or holds only White_Space. */
     public function nonBlank(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(static fn (string $v): bool => !Text::isBlank($v), 'blank', [], $message);
     }
 
     /** At least that many Unicode scalar values. */
     public function minLength(int $n, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $min = $n;
         return $this->then(static function (string $v, Path $p) use ($min, $message): Result {
             $n = ScalarValues::count($v);
@@ -99,6 +102,7 @@ final class StringDecoder extends BaseDecoder
     /** At most that many Unicode scalar values. */
     public function maxLength(int $n, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $max = $n;
         return $this->then(static function (string $v, Path $p) use ($max, $message): Result {
             $n = ScalarValues::count($v);
@@ -111,6 +115,7 @@ final class StringDecoder extends BaseDecoder
     /** Exactly that many Unicode scalar values. */
     public function fixedLength(int $n, ?string $message = null): static
     {
+        $message = Arguments::message($message);
         $length = $n;
         return $this->then(static function (string $v, Path $p) use ($length, $message): Result {
             $n = ScalarValues::count($v);
@@ -127,11 +132,8 @@ final class StringDecoder extends BaseDecoder
      */
     public function oneOf(array $allowed, ?string $message = null): static
     {
-        foreach ($allowed as $a) {
-            if (!is_string($a)) {
-                throw new \InvalidArgumentException('oneOf: an allowed string is a string, not ' . get_debug_type($a));
-            }
-        }
+        $message = Arguments::message($message);
+        $allowed = Arguments::texts($allowed, 'the allowed strings');
         if (count(array_unique($allowed)) !== count($allowed)) {
             throw new \InvalidArgumentException('oneOf: the allowed strings are not distinct');
         }
@@ -149,6 +151,8 @@ final class StringDecoder extends BaseDecoder
 
     public function startsWith(string $prefix, ?string $message = null): static
     {
+        $message = Arguments::message($message);
+        $prefix = Arguments::text($prefix, 'the prefix');
         return $this->check(
             static fn (string $v): bool => str_starts_with($v, $prefix),
             'invalid_format.starts_with',
@@ -159,6 +163,8 @@ final class StringDecoder extends BaseDecoder
 
     public function endsWith(string $suffix, ?string $message = null): static
     {
+        $message = Arguments::message($message);
+        $suffix = Arguments::text($suffix, 'the suffix');
         return $this->check(
             static fn (string $v): bool => str_ends_with($v, $suffix),
             'invalid_format.ends_with',
@@ -169,6 +175,8 @@ final class StringDecoder extends BaseDecoder
 
     public function includes(string $substring, ?string $message = null): static
     {
+        $message = Arguments::message($message);
+        $substring = Arguments::text($substring, 'the substring');
         return $this->check(
             static fn (string $v): bool => str_contains($v, $substring),
             'invalid_format.includes',
@@ -184,7 +192,8 @@ final class StringDecoder extends BaseDecoder
      */
     public function pattern(string $regex, ?string $message = null): static
     {
-        $pattern = $regex;
+        $message = Arguments::message($message);
+        $pattern = Arguments::text($regex, 'the pattern');
         $read = Pattern::read($pattern);
         if (!$read instanceof Pattern) {
             throw new \InvalidArgumentException("not a pattern: {$pattern}");
@@ -199,37 +208,44 @@ final class StringDecoder extends BaseDecoder
 
     public function email(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Email::matches(...), 'invalid_format.email', [], $message);
     }
 
     public function ipv4(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Ip::isV4(...), 'invalid_format.ipv4', [], $message);
     }
 
     public function ipv6(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Ip::isV6(...), 'invalid_format.ipv6', [], $message);
     }
 
     public function ip(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Ip::isIp(...), 'invalid_format.ip', [], $message);
     }
 
     public function ulid(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Ulid::matches(...), 'invalid_format.ulid', [], $message);
     }
 
     public function cuid(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Cuid::matches(...), 'invalid_format.cuid', [], $message);
     }
 
     /** A UUID in either case, given as 32 lower-case hexadecimal digits grouped 8-4-4-4-12. */
     public function uuid(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->then(static function (string $v, Path $p) use ($message): Result {
             $uuid = Uuid::read($v);
             return $uuid === null
@@ -241,12 +257,14 @@ final class StringDecoder extends BaseDecoder
     /** An RFC 3986 URI with an http or https scheme and a non-empty host, as written. */
     public function url(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Uri::isUrl(...), 'invalid_format.url', [], $message);
     }
 
     /** An RFC 3986 URI (not a relative reference), as written. */
     public function uri(?string $message = null): static
     {
+        $message = Arguments::message($message);
         return $this->check(Uri::isUri(...), 'invalid_format.uri', [], $message);
     }
 
@@ -255,18 +273,21 @@ final class StringDecoder extends BaseDecoder
     /** An optional sign and ASCII digits, within the int32 range. */
     public function toInt(?string $message = null): IntDecoder
     {
+        $message = Arguments::message($message);
         return new IntDecoder($this->followedBy(self::integer(IntDecoder::MIN, IntDecoder::MAX, 'integer', $message)));
     }
 
     /** An optional sign and ASCII digits, within the int64 range. */
     public function toLong(?string $message = null): LongDecoder
     {
+        $message = Arguments::message($message);
         return new LongDecoder($this->followedBy(self::integer(PHP_INT_MIN, PHP_INT_MAX, 'long', $message)));
     }
 
     /** A decimal number, keeping the scale it is written with. */
     public function toDecimal(?string $message = null): DecimalDecoder
     {
+        $message = Arguments::message($message);
         return new DecimalDecoder($this->followedBy(static function (string $v, Path $p) use ($message): Result {
             $d = Decimal::parse($v);
             return $d === null
@@ -278,8 +299,9 @@ final class StringDecoder extends BaseDecoder
     /** true, 1, yes or on, and false, 0, no or off, ASCII case-insensitively. */
     public function toBool(?string $message = null): BoolDecoder
     {
+        $message = Arguments::message($message);
         return new BoolDecoder($this->followedBy(static function (string $v, Path $p) use ($message): Result {
-            return match (strtr($v, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')) {
+            return match (Text::asciiLower($v)) {
                 'true', '1', 'yes', 'on' => Result::ok(true),
                 'false', '0', 'no', 'off' => Result::ok(false),
                 default => Result::issue($p, 'type_mismatch', ['expected' => 'boolean'], $message),
@@ -294,6 +316,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function date(?string $message = null): TemporalDecoder
     {
+        $message = Arguments::message($message);
         return $this->temporal(LocalDate::parse(...), LocalDate::class, 'invalid_format.date', $message);
     }
 
@@ -304,6 +327,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function time(?string $message = null): TemporalDecoder
     {
+        $message = Arguments::message($message);
         return $this->temporal(LocalTime::parse(...), LocalTime::class, 'invalid_format.time', $message);
     }
 
@@ -314,6 +338,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function dateTime(?string $message = null): TemporalDecoder
     {
+        $message = Arguments::message($message);
         return $this->temporal(LocalDateTime::parse(...), LocalDateTime::class, 'invalid_format.date_time', $message);
     }
 
@@ -324,6 +349,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function offsetDateTime(?string $message = null): TemporalDecoder
     {
+        $message = Arguments::message($message);
         return $this->temporal(OffsetDateTime::parse(...), OffsetDateTime::class, 'invalid_format.offset_date_time', $message);
     }
 
@@ -334,6 +360,7 @@ final class StringDecoder extends BaseDecoder
      */
     public function iso8601(?string $message = null): TemporalDecoder
     {
+        $message = Arguments::message($message);
         return $this->temporal(Instant::parse(...), Instant::class, 'invalid_format.instant', $message);
     }
 

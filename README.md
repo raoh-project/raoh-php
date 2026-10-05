@@ -34,7 +34,9 @@ composer install
 ./vendor/bin/phpunit
 ```
 
-The tests that run the specification's suite read it from `RAOH_SPECIFICATION_DIR`, or from `raoh-specification` beside this repository, and are skipped where there is none. `tests/public-api.txt` records the public API, and a test fails when the code differs from it: a pull request that changes the API writes it again with `composer public-api`, and says in `CHANGELOG.md` what the change means for code that uses raoh-php.
+The tests that run the specification's suite read it from `RAOH_SPECIFICATION_DIR`, or from `raoh-specification` beside this repository, and are skipped where there is none.
+
+Three rules hold the library together, and a test holds each one for every entry point rather than for the ones someone remembered. Decoding never throws: whatever PHP value a decoder is handed, `Internal\Input` reads it, and bad input is an issue (`TotalityTest` runs every decoder of the suite on values outside the input model). What a caller gives is checked where it is given: `Internal\Arguments` reads every argument the library keeps, and a string that is not UTF-8 is refused (`EntryPointTest` finds every public entry point that takes a string by reflection). A public value type holds its own invariants whoever makes it (`InvariantTest`). `tests/public-api.txt` records the public API, and a test fails when the code differs from it: a pull request that changes the API writes it again with `composer public-api`, and says in `CHANGELOG.md` what the change means for code that uses raoh-php.
 
 ## Package Layout
 

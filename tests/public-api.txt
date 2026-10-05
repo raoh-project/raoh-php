@@ -1,4 +1,4 @@
-final class Raoh\Absent
+final readonly class Raoh\Absent extends Raoh\Presence
   __construct(): mixed
 
 final class Raoh\Boundary\Array_\ArrayDecoders
@@ -23,9 +23,9 @@ final class Raoh\Boundary\Array_\ArrayDecoders
   string_(): Raoh\Builtin\StringDecoder static
 
 final class Raoh\Boundary\Array_\Encode\PropertyEncoder {@template T}
-  $key: string
   __construct(string $key, Closure $getter, Raoh\Encoder $encoder): mixed {@param \Closure(T): mixed $getter; @param Encoder<mixed, mixed> $encoder}
   encode(mixed $value): mixed {@param T $value}
+  readonly $key: string
 
 final class Raoh\Boundary\Json\JsonDecoders
   bool_(): Raoh\Builtin\BoolDecoder static {@return \Raoh\Builtin\BoolDecoder}
@@ -40,35 +40,36 @@ final class Raoh\Boundary\Json\JsonDecoders
   optionalField(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder static {@template T; @param Decoder<mixed, T> $dec; @return \Raoh\FieldDecoder<mixed, T|null>}
   string_(): Raoh\Builtin\StringDecoder static {@return \Raoh\Builtin\StringDecoder}
 
-abstract class Raoh\Builtin\BaseDecoder uses Raoh\DecoderTrait {@template T; @implements Decoder<mixed, T>}
-  __construct(Closure $run): mixed {@param \Closure(mixed, Path): Result<T> $run}
+abstract class Raoh\Builtin\BaseDecoder implements Raoh\Decoder uses Raoh\DecoderTrait {@template T; @implements Decoder<mixed, T>}
   decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
 
-final class Raoh\Builtin\BoolDecoder {@extends BaseDecoder<bool>}
+final class Raoh\Builtin\BoolDecoder extends Raoh\Builtin\BaseDecoder {@extends BaseDecoder<bool>}
   isFalse(?string $message = null): static
   isTrue(?string $message = null): static
 
-final class Raoh\Builtin\DecimalDecoder {@extends NumberDecoder<Decimal>}
+final class Raoh\Builtin\DecimalDecoder extends Raoh\Builtin\NumberDecoder {@extends NumberDecoder<Decimal>}
   multipleOf(Raoh\Value\Decimal|string|int $divisor, ?string $message = null): static
   scale(int $max, ?string $message = null): static
 
-final class Raoh\Builtin\DictDecoder {@template V; @extends BaseDecoder<array<array-key, V>>}
+final class Raoh\Builtin\DictDecoder extends Raoh\Builtin\BaseDecoder {@template V; @extends BaseDecoder<array<array-key, V>>}
   fixedSize(int $size, ?string $message = null): static
   maxSize(int $max, ?string $message = null): static
   minSize(int $min, ?string $message = null): static
   nonempty(?string $message = null): static
 
-final class Raoh\Builtin\DoubleDecoder {@extends NumberDecoder<float>}
+final class Raoh\Builtin\DoubleDecoder extends Raoh\Builtin\NumberDecoder {@extends NumberDecoder<float>}
   oneOf(array $allowed, ?string $message = null): static {@param list<float|int> $allowed}
 
-final class Raoh\Builtin\FloatDecoder {@extends NumberDecoder<Float32>}
+final class Raoh\Builtin\FloatDecoder extends Raoh\Builtin\NumberDecoder {@extends NumberDecoder<Float32>}
   oneOf(array $allowed, ?string $message = null): static {@param list<float|int|Float32> $allowed}
 
-final class Raoh\Builtin\IntDecoder {@extends NumberDecoder<int>}
+final class Raoh\Builtin\IntDecoder extends Raoh\Builtin\NumberDecoder {@extends NumberDecoder<int>}
+  const MAX = 2147483647
+  const MIN = -2147483648
   multipleOf(int $divisor, ?string $message = null): static
   oneOf(array $allowed, ?string $message = null): static {@param list<int> $allowed}
 
-final class Raoh\Builtin\ListDecoder {@template E; @extends BaseDecoder<list<E>>}
+final class Raoh\Builtin\ListDecoder extends Raoh\Builtin\BaseDecoder {@template E; @extends BaseDecoder<list<E>>}
   contains(mixed $element, ?string $message = null): static {@param E $element}
   containsAll(array $elements, ?string $message = null): static {@param list<E> $elements}
   fixedSize(int $size, ?string $message = null): static
@@ -78,11 +79,11 @@ final class Raoh\Builtin\ListDecoder {@template E; @extends BaseDecoder<list<E>>
   toSet(): Raoh\Builtin\ListDecoder {@return ListDecoder<E>}
   unique(?string $message = null): static
 
-final class Raoh\Builtin\LongDecoder {@extends NumberDecoder<int>}
+final class Raoh\Builtin\LongDecoder extends Raoh\Builtin\NumberDecoder {@extends NumberDecoder<int>}
   multipleOf(int $divisor, ?string $message = null): static
   oneOf(array $allowed, ?string $message = null): static {@param list<int> $allowed}
 
-abstract class Raoh\Builtin\NumberDecoder {@template T; @extends BaseDecoder<T>}
+abstract class Raoh\Builtin\NumberDecoder extends Raoh\Builtin\BaseDecoder {@template T; @extends BaseDecoder<T>}
   max(mixed $n, ?string $message = null): static
   min(mixed $n, ?string $message = null): static
   negative(?string $message = null): static
@@ -91,12 +92,12 @@ abstract class Raoh\Builtin\NumberDecoder {@template T; @extends BaseDecoder<T>}
   positive(?string $message = null): static
   range(mixed $min, mixed $max, ?string $message = null): static
 
-final class Raoh\Builtin\ObjectDecoder uses Raoh\DecoderTrait {@implements Decoder<mixed, list<mixed>>}
+final class Raoh\Builtin\ObjectDecoder implements Raoh\Decoder uses Raoh\DecoderTrait {@implements Decoder<mixed, list<mixed>>}
   __construct(Raoh\Decoder ...$fields): mixed {@param Decoder<mixed, mixed> ...$fields}
   decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
   strict(): Raoh\Decoder {@return Decoder<mixed, list<mixed>>}
 
-final class Raoh\Builtin\StringDecoder {@extends BaseDecoder<string>}
+final class Raoh\Builtin\StringDecoder extends Raoh\Builtin\BaseDecoder {@extends BaseDecoder<string>}
   cuid(?string $message = null): static
   date(?string $message = null): Raoh\Builtin\TemporalDecoder {@return TemporalDecoder<LocalDate>}
   dateTime(?string $message = null): Raoh\Builtin\TemporalDecoder {@return TemporalDecoder<LocalDateTime>}
@@ -129,17 +130,16 @@ final class Raoh\Builtin\StringDecoder {@extends BaseDecoder<string>}
   url(?string $message = null): static
   uuid(?string $message = null): static
 
-final class Raoh\Builtin\TemporalDecoder {@template T of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant; @extends BaseDecoder<T>}
+final class Raoh\Builtin\TemporalDecoder extends Raoh\Builtin\BaseDecoder {@template T of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant; @extends BaseDecoder<T>}
   after(object|string $bound, ?string $message = null): static {@param T|string $bound}
   before(object|string $bound, ?string $message = null): static {@param T|string $bound}
   between(object|string $from, object|string $to, ?string $message = null): static {@param T|string $from; @param T|string $to}
-  over(Closure $run, callable $parse, string $type): Raoh\Builtin\TemporalDecoder static {@template U of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant; @param \Closure(mixed, Path): Result<U> $run; @param callable(string): (U|null) $parse reads a bound written as text; @param class-string<U> $type the class of the values, which a bound has to be; @return self<U>}
 
-final class Raoh\CallableDecoder uses Raoh\DecoderTrait {@template I; @template T; @implements Decoder<I, T>}
+final class Raoh\CallableDecoder implements Raoh\Decoder uses Raoh\DecoderTrait {@template I; @template T; @implements Decoder<I, T>}
   decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
   of(callable $fn): Raoh\CallableDecoder static
 
-final class Raoh\CallableEncoder {@template T; @template O; @implements Encoder<T, O>}
+final class Raoh\CallableEncoder implements Raoh\Encoder {@template T; @template O; @implements Encoder<T, O>}
   andThen(Raoh\Encoder $next): Raoh\Encoder {@template P; @param Encoder<O, P> $next; @return Encoder<T, P>}
   contramap(callable $f): Raoh\Encoder {@template S; @param callable(S): T $f; @return Encoder<S, O>}
   encode(mixed $value): mixed
@@ -198,10 +198,10 @@ interface Raoh\Encoder {@template T; @template O}
   contramap(callable $f): Raoh\Encoder {@template S; @param callable(S): T $f; @return Encoder<S, O>}
   encode(mixed $value): mixed {@param T $value; @return O}
 
-final class Raoh\Err {@template-covariant T; @extends Result<T>}
-  $issues: Raoh\Issues
+final readonly class Raoh\Err extends Raoh\Result implements Stringable {@template-covariant T; @extends Result<T>}
   __construct(Raoh\Issues $issues): mixed
   __toString(): string
+  readonly $issues: Raoh\Issues
 
 enum Raoh\ErrorCodes
   case Blank = 'blank'
@@ -229,17 +229,17 @@ enum Raoh\ErrorCodes
 interface Raoh\FieldDecoder {@template I; @template T; @extends Decoder<I, T>}
   fieldName(): string
 
-final class Raoh\Field\Field uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, T>}
+final class Raoh\Field\Field implements Raoh\Decoder, Raoh\FieldDecoder uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, T>}
   __construct(string $name, Raoh\Decoder $decoder): mixed {@param Decoder<mixed, T> $decoder}
   decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
   fieldName(): string
 
-final class Raoh\Field\OptionalField uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, T|null>}
+final class Raoh\Field\OptionalField implements Raoh\Decoder, Raoh\FieldDecoder uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, T|null>}
   __construct(string $name, Raoh\Decoder $decoder): mixed {@param Decoder<mixed, T> $decoder}
   decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
   fieldName(): string
 
-final class Raoh\Field\OptionalNullableField uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, Absent|PresentNull|Present<T>>}
+final class Raoh\Field\OptionalNullableField implements Raoh\Decoder, Raoh\FieldDecoder uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, Absent|PresentNull|Present<T>>}
   __construct(string $name, Raoh\Decoder $decoder): mixed {@param Decoder<mixed, T> $decoder}
   decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
   fieldName(): string
@@ -247,12 +247,12 @@ final class Raoh\Field\OptionalNullableField uses Raoh\DecoderTrait {@template T
 final class Raoh\Input\Json
   parse(string $text, int $maxDepth = 512): mixed static
 
-final class Raoh\Input\JsonNumber
-  $lexeme: string
+final readonly class Raoh\Input\JsonNumber implements Stringable
   __construct(string $lexeme): mixed
   __toString(): string
+  readonly $lexeme: string
 
-final class Raoh\Input\JsonObject
+final class Raoh\Input\JsonObject implements Countable
   __construct(iterable $members = []): mixed {@param iterable<string|int, mixed> $members}
   count(): int
   get(string $name): mixed
@@ -260,17 +260,17 @@ final class Raoh\Input\JsonObject
   members(): Generator {@return \Generator<string, mixed>}
   names(): array {@return list<string>}
 
-final class Raoh\Issue
-  $code: string
-  $customMessage: bool
-  $message: string
-  $messageKey: string
-  $meta: array
-  $path: Raoh\Path
+final readonly class Raoh\Issue
   __construct(Raoh\Path $path, string $code, string $message, array $meta = [], bool $customMessage = false, ?string $messageKey = null): mixed {@param array<string, mixed> $meta}
   custom(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<string, mixed> $meta}
   derived(Raoh\Path $path, string $messageKey, array $meta = [], ?string $message = null): Raoh\Issue static {@param array<string, mixed> $meta}
   of(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<string, mixed> $meta}
+  readonly $code: string
+  readonly $customMessage: bool
+  readonly $message: string
+  readonly $messageKey: string
+  readonly $meta: array
+  readonly $path: Raoh\Path
   rebase(Raoh\Path $prefix): Raoh\Issue
   resolve(callable $resolver): Raoh\Issue {@param callable(string, array<string, mixed>): ?string $resolver}
   withCustomMessage(string $message): Raoh\Issue
@@ -332,12 +332,12 @@ final class Raoh\Messages
   templates(): array {@return array<string, string>}
   with(array $templates): Raoh\Messages {@param array<string, string> $templates}
 
-final class Raoh\Ok {@template-covariant T; @extends Result<T>}
-  $value: mixed
+final readonly class Raoh\Ok extends Raoh\Result implements Stringable {@template-covariant T; @extends Result<T>}
   __construct(mixed $value): mixed {@param T $value}
   __toString(): string
+  readonly $value: mixed
 
-final class Raoh\Path
+final class Raoh\Path implements Stringable
   __toString(): string
   append(string $segment): Raoh\Path
   appendPath(Raoh\Path $other): Raoh\Path
@@ -346,16 +346,16 @@ final class Raoh\Path
   segments(): array {@return list<string>}
   toJsonPointer(): string
 
-abstract class Raoh\Presence
+abstract readonly class Raoh\Presence
 
-final class Raoh\Present {@template T}
-  $value: mixed
+final readonly class Raoh\Present extends Raoh\Presence {@template T}
   __construct(mixed $value): mixed {@param T $value}
+  readonly $value: mixed
 
-final class Raoh\PresentNull
+final readonly class Raoh\PresentNull extends Raoh\Presence
   __construct(): mixed
 
-abstract class Raoh\Result {@template-covariant T}
+abstract readonly class Raoh\Result {@template-covariant T}
   err(Raoh\Issues $issues): Raoh\Err static {@return Err<never>}
   fail(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
   failAtRoot(string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
@@ -366,7 +366,6 @@ abstract class Raoh\Result {@template-covariant T}
   getOrThrow(): mixed {@return T}
   isErr(): bool
   isOk(): bool
-  issue(Raoh\Path $path, string $messageKey, array $meta = [], ?string $message = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
   map(callable $f): Raoh\Result {@template U; @param callable(T): U $f; @return Result<U>}
   map2(Raoh\Result $ra, Raoh\Result $rb, callable $f): Raoh\Result static {@template A; @template B; @template C; @param Result<A> $ra; @param Result<B> $rb; @param callable(A, B): C $f; @return Result<C>}
   ok(mixed $value): Raoh\Ok static {@template U; @param U $value; @return Ok<U>}
@@ -376,7 +375,7 @@ abstract class Raoh\Result {@template-covariant T}
 trait Raoh\StaticConstructor
   of(mixed ...$args): static static
 
-final class Raoh\Value\Decimal
+final readonly class Raoh\Value\Decimal implements Stringable
   __toString(): string
   coefficient(): string
   compareTo(Raoh\Value\Decimal $other): int
@@ -388,14 +387,14 @@ final class Raoh\Value\Decimal
   scale(): int
   signum(): int
 
-final class Raoh\Value\Float32
-  $value: float
+final readonly class Raoh\Value\Float32 implements Stringable
   __construct(float $value): mixed
   __toString(): string
   equals(Raoh\Value\Float32 $other): bool
   fromLexeme(string $lexeme): Raoh\Value\Float32 static
+  readonly $value: float
 
-final class Raoh\Value\Temporal\Instant
+final readonly class Raoh\Value\Temporal\Instant implements Stringable
   __toString(): string
   compareTo(Raoh\Value\Temporal\Instant $other): int
   epochSecond(): int
@@ -404,7 +403,7 @@ final class Raoh\Value\Temporal\Instant
   parse(string $text): ?Raoh\Value\Temporal\Instant static
   toDateTimeImmutable(): DateTimeImmutable
 
-final class Raoh\Value\Temporal\LocalDate
+final readonly class Raoh\Value\Temporal\LocalDate implements Stringable
   __toString(): string
   compareTo(Raoh\Value\Temporal\LocalDate $other): int
   day(): int
@@ -414,7 +413,7 @@ final class Raoh\Value\Temporal\LocalDate
   toDateTimeImmutable(): DateTimeImmutable
   year(): int
 
-final class Raoh\Value\Temporal\LocalDateTime
+final readonly class Raoh\Value\Temporal\LocalDateTime implements Stringable
   __toString(): string
   compareTo(Raoh\Value\Temporal\LocalDateTime $other): int
   date(): Raoh\Value\Temporal\LocalDate
@@ -430,7 +429,7 @@ final class Raoh\Value\Temporal\LocalDateTime
   toDateTimeImmutable(): DateTimeImmutable
   year(): int
 
-final class Raoh\Value\Temporal\LocalTime
+final readonly class Raoh\Value\Temporal\LocalTime implements Stringable
   __toString(): string
   compareTo(Raoh\Value\Temporal\LocalTime $other): int
   equals(Raoh\Value\Temporal\LocalTime $other): bool
@@ -441,7 +440,7 @@ final class Raoh\Value\Temporal\LocalTime
   second(): int
   secondOfDay(): int
 
-final class Raoh\Value\Temporal\OffsetDateTime
+final readonly class Raoh\Value\Temporal\OffsetDateTime implements Stringable
   __toString(): string
   compareTo(Raoh\Value\Temporal\OffsetDateTime $other): int
   date(): Raoh\Value\Temporal\LocalDate
