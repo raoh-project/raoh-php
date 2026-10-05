@@ -9,20 +9,26 @@ use Raoh\CallableDecoder;
 use Raoh\Combinator\Combiner;
 use Raoh\Decoder;
 use Raoh\Decoders;
-use Raoh\ErrorCodes;
 use Raoh\FieldDecoder;
-use Raoh\DecoderTrait;
+use Raoh\Internal\Input;
 use Raoh\Path;
 use Raoh\Present;
 use Raoh\PresentNull;
 use Raoh\Result;
 use Raoh\Builtin\BoolDecoder;
+use Raoh\Builtin\DecimalDecoder;
+use Raoh\Builtin\DictDecoder;
+use Raoh\Builtin\DoubleDecoder;
 use Raoh\Builtin\FloatDecoder;
 use Raoh\Builtin\IntDecoder;
+use Raoh\Builtin\ListDecoder;
+use Raoh\Builtin\LongDecoder;
+use Raoh\Builtin\ObjectDecoder;
 use Raoh\Builtin\StringDecoder;
 
 /**
- * Internal implementation for the Array_ boundary.
+ * The decoders for PHP arrays and form data, which read them as the input model does (see
+ * {@see Input}): an associative array is an object, a list an array.
  * Public API is exposed via functions.php.
  */
 final class ArrayDecoders
@@ -31,239 +37,126 @@ final class ArrayDecoders
     {
     }
 
-    /** @return StringDecoder<mixed> */
     public static function string_(): StringDecoder
     {
-        $base = CallableDecoder::of(function (mixed $in, ?Path $path = null): Result {
-            $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (!is_string($in)) {
-                return Result::fail(
-                    $p,
-                    ErrorCodes::TypeMismatch->value,
-                    'expected string',
-                    ['expected' => 'string', 'actual' => gettype($in)],
-                );
-            }
-            return Result::ok($in);
-        });
-        return new StringDecoder($base);
+        return Decoders::string_();
     }
 
-    /** @return IntDecoder<mixed> */
     public static function int_(): IntDecoder
     {
-        return new IntDecoder(CallableDecoder::of(function (mixed $in, ?Path $path = null): Result {
-            $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (is_int($in)) {
-                return Result::ok($in);
-            }
-            if (is_string($in) && is_numeric($in) && !str_contains($in, '.')) {
-                return Result::ok((int) $in);
-            }
-            return Result::fail(
-                $p,
-                ErrorCodes::TypeMismatch->value,
-                'expected integer',
-                ['expected' => 'integer', 'actual' => gettype($in)],
-            );
-        }));
+        return Decoders::int_();
     }
 
-    /** @return FloatDecoder<mixed> */
+    public static function long(): LongDecoder
+    {
+        return Decoders::long();
+    }
+
     public static function float_(): FloatDecoder
     {
-        return new FloatDecoder(CallableDecoder::of(function (mixed $in, ?Path $path = null): Result {
-            $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (is_float($in) || is_int($in)) {
-                return Result::ok((float) $in);
-            }
-            if (is_string($in) && is_numeric($in)) {
-                return Result::ok((float) $in);
-            }
-            return Result::fail(
-                $p,
-                ErrorCodes::TypeMismatch->value,
-                'expected number',
-                ['expected' => 'float', 'actual' => gettype($in)],
-            );
-        }));
+        return Decoders::float_();
     }
 
-    /** @return BoolDecoder<mixed> */
+    public static function double(): DoubleDecoder
+    {
+        return Decoders::double();
+    }
+
+    public static function decimal(): DecimalDecoder
+    {
+        return Decoders::decimal();
+    }
+
     public static function bool_(): BoolDecoder
     {
-        return new BoolDecoder(CallableDecoder::of(function (mixed $in, ?Path $path = null): Result {
-            $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (is_bool($in)) {
-                return Result::ok($in);
-            }
-            return Result::fail(
-                $p,
-                ErrorCodes::TypeMismatch->value,
-                'expected boolean',
-                ['expected' => 'boolean', 'actual' => gettype($in)],
-            );
-        }));
+        return Decoders::bool_();
     }
 
     /**
-     * Required field from an associative array.
-     *
      * @template T
      * @param Decoder<mixed, T> $dec
-     * @return FieldDecoder&Decoder<array, T>
+     * @return FieldDecoder<mixed, T>
      */
     public static function field(string $name, Decoder $dec): FieldDecoder
     {
-        return new class ($name, $dec) implements FieldDecoder {
-            use DecoderTrait;
-
-            public function __construct(
-                private readonly string $name,
-                private readonly Decoder $dec,
-            ) {
-            }
-
-            public function fieldName(): string
-            {
-                return $this->name;
-            }
-
-            public function decode(mixed $in, ?Path $path = null): Result
-            {
-                $p = $path ?? Path::root();
-                $fieldPath = $p->append($this->name);
-                if (!is_array($in) || !array_key_exists($this->name, $in)) {
-                    return Result::fail($fieldPath, ErrorCodes::Required->value, 'is required');
-                }
-                return $this->dec->decode($in[$this->name], $fieldPath);
-            }
-        };
+        return Decoders::field($name, $dec);
     }
 
     /**
-     * Optional field — returns null when the key is absent.
+     * @template T
+     * @param Decoder<mixed, T> $dec
+     * @return FieldDecoder<mixed, T|null>
+     */
+    public static function optionalField(string $name, Decoder $dec): FieldDecoder
+    {
+        return Decoders::optionalField($name, $dec);
+    }
+
+    /**
+     * @template T
+     * @param Decoder<mixed, T> $dec
+     * @return FieldDecoder<mixed, Absent|PresentNull|Present<T>>
+     */
+    public static function optionalNullableField(string $name, Decoder $dec): FieldDecoder
+    {
+        return Decoders::optionalNullableField($name, $dec);
+    }
+
+    /**
+     * Requires an object, then delegates to $dec. Fields check for an object themselves; this
+     * gives one `required` or `type_mismatch` for the whole value instead of one per field.
      *
      * @template T
      * @param Decoder<mixed, T> $dec
-     * @return Decoder<array<string, mixed>, T|null>
-     */
-    public static function optionalField(string $name, Decoder $dec): Decoder
-    {
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($name, $dec): Result {
-            if (!is_array($in) || !array_key_exists($name, $in)) {
-                return Result::ok(null);
-            }
-            return $dec->decode($in[$name], ($path ?? Path::root())->append($name));
-        });
-    }
-
-    /**
-     * Three-state field: Absent | PresentNull | Present<T>
-     * Useful for PATCH endpoints.
-     *
-     * @template T
-     * @param Decoder<mixed, T> $dec
-     * @return Decoder<array<string, mixed>, Absent|PresentNull|Present<T>>
-     */
-    public static function optionalNullableField(string $name, Decoder $dec): Decoder
-    {
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($name, $dec): Result {
-            if (!is_array($in) || !array_key_exists($name, $in)) {
-                return Result::ok(new Absent());
-            }
-            if ($in[$name] === null) {
-                return Result::ok(new PresentNull());
-            }
-            return $dec->decode($in[$name], ($path ?? Path::root())->append($name))
-                ->map(fn ($v) => new Present($v));
-        });
-    }
-
-    /**
-     * Validates that the input is an associative array (object), then delegates to $dec.
-     * Use when a field's value is itself a nested object.
-     *
-     * @template T
-     * @param Decoder<array<string, mixed>, T> $dec
      * @return Decoder<mixed, T>
      */
     public static function nested(Decoder $dec): Decoder
     {
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($dec): Result {
+        return CallableDecoder::of(static function (mixed $in, ?Path $path = null) use ($dec): Result {
             $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (!is_array($in) || array_is_list($in)) {
-                return Result::fail(
-                    $p,
-                    ErrorCodes::TypeMismatch->value,
-                    'expected object',
-                    ['expected' => 'object', 'actual' => gettype($in)],
-                );
+            if (Input::members($in) === null) {
+                return Input::mismatch($in, $p, 'object');
             }
             return $dec->decode($in, $p);
         });
     }
 
     /**
-     * Decode each element of a list, accumulating all errors.
-     *
      * @template T
      * @param Decoder<mixed, T> $elementDec
-     * @return Decoder<mixed, list<T>>
+     * @return ListDecoder<T>
      */
-    public static function listOf(Decoder $elementDec): Decoder
+    public static function listOf(Decoder $elementDec): ListDecoder
     {
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($elementDec): Result {
-            $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (!is_array($in) || !array_is_list($in)) {
-                return Result::fail(
-                    $p,
-                    ErrorCodes::TypeMismatch->value,
-                    'expected array',
-                    ['expected' => 'array', 'actual' => gettype($in)],
-                );
-            }
-            return Result::traverse(
-                $in,
-                fn (mixed $item, Path $itemPath) => $elementDec->decode($item, $itemPath),
-                $p,
-            );
-        });
+        return Decoders::list_($elementDec);
     }
 
     /**
-     * Allow null values; delegates to $dec for non-null.
-     *
+     * @template T
+     * @param Decoder<mixed, T> $valueDec
+     * @return DictDecoder<T>
+     */
+    public static function dict(Decoder $valueDec): DictDecoder
+    {
+        return Decoders::dict($valueDec);
+    }
+
+    /**
+     * @param Decoder<mixed, mixed> ...$fields
+     */
+    public static function object(Decoder ...$fields): ObjectDecoder
+    {
+        return Decoders::object(...$fields);
+    }
+
+    /**
      * @template T
      * @param Decoder<mixed, T> $dec
      * @return Decoder<mixed, T|null>
      */
     public static function nullable(Decoder $dec): Decoder
     {
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($dec): Result {
-            if ($in === null) {
-                return Result::ok(null);
-            }
-            return $dec->decode($in, $path);
-        });
+        return Decoders::nullable($dec);
     }
 
     /** @param Decoder<mixed, mixed> ...$decoders */
@@ -273,91 +166,31 @@ final class ArrayDecoders
     }
 
     /**
-     * Decode a PHP enum from input.
-     *
-     * - BackedEnum: matched by backing value (string or int)
-     * - Pure enum: matched by case name (string)
-     *
-     * @template T of \UnitEnum
-     * @param class-string<T> $enumClass
-     * @return Decoder<mixed, T>
+     * @param list<string>|class-string<\UnitEnum> $symbols
+     * @return Decoder<mixed, mixed>
      */
-    public static function enumOf(string $enumClass): Decoder
+    public static function enumOf(array|string $symbols, ?StringDecoder $string = null, ?string $message = null): Decoder
     {
-        if (!is_subclass_of($enumClass, \UnitEnum::class)) {
-            throw new \InvalidArgumentException("{$enumClass} is not an enum");
-        }
-
-        if (is_subclass_of($enumClass, \BackedEnum::class)) {
-            return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($enumClass): Result {
-                $p = $path ?? Path::root();
-                if ($in === null) {
-                    return Result::fail($p, ErrorCodes::Required->value, 'is required');
-                }
-                try {
-                    return Result::ok($enumClass::from($in));
-                } catch (\ValueError) {
-                    return Result::fail($p, ErrorCodes::InvalidValue->value, 'invalid value', ['actual' => $in]);
-                }
-            });
-        }
-
-        /** @var array<string, T> $lookup */
-        $lookup = [];
-        foreach ($enumClass::cases() as $case) {
-            $lookup[$case->name] = $case;
-        }
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($lookup): Result {
-            $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (!is_string($in)) {
-                return Result::fail($p, ErrorCodes::TypeMismatch->value, 'must be a string');
-            }
-            if (isset($lookup[$in])) {
-                return Result::ok($lookup[$in]);
-            }
-            return Result::fail($p, ErrorCodes::InvalidValue->value, 'invalid value', ['actual' => $in]);
-        });
+        return Decoders::enumOf($symbols, $string, $message);
     }
 
     /** @return Decoder<mixed, string> */
-    public static function bytes(): Decoder
+    public static function literal(string $expected, ?StringDecoder $string = null, ?string $message = null): Decoder
     {
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null): Result {
-            $p = $path ?? Path::root();
-            if ($in === null) {
-                return Result::fail($p, ErrorCodes::Required->value, 'is required');
-            }
-            if (!is_string($in)) {
-                return Result::fail(
-                    $p,
-                    ErrorCodes::TypeMismatch->value,
-                    'expected binary string (string)',
-                    ['expected' => 'binary string (string)', 'actual' => gettype($in)],
-                );
-            }
-            return Result::ok($in);
-        });
+        return Decoders::literal($expected, $string, $message);
     }
 
     /**
-     * Match an exact literal value.
+     * Any PHP string, whatever bytes it holds.
      *
-     * @return Decoder<mixed, mixed>
+     * @return Decoder<mixed, string>
      */
-    public static function literal(mixed $expected): Decoder
+    public static function bytes(): Decoder
     {
-        return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($expected): Result {
+        return CallableDecoder::of(static function (mixed $in, ?Path $path = null): Result {
             $p = $path ?? Path::root();
-            if ($in !== $expected) {
-                return Result::fail(
-                    $p,
-                    ErrorCodes::InvalidValue->value,
-                    "expected " . (json_encode($expected) ?: 'null'),
-                    ['expected' => $expected, 'actual' => $in],
-                );
+            if (!is_string($in)) {
+                return Input::mismatch($in, $p, 'string');
             }
             return Result::ok($in);
         });

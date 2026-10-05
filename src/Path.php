@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Arguments;
+
 final class Path
 {
     private static ?Path $root = null;
@@ -28,9 +30,12 @@ final class Path
         return $p;
     }
 
+    /**
+     * @throws \InvalidArgumentException when the segment is not UTF-8, which no member name is
+     */
     public function append(string $segment): self
     {
-        return new self($this, $segment);
+        return new self($this, Arguments::text($segment, 'a path segment'));
     }
 
     public function appendPath(self $other): self

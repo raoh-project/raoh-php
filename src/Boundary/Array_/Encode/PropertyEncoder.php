@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Boundary\Array_\Encode;
 
+use Raoh\Internal\Arguments;
 use Raoh\Encoder;
 
 /**
@@ -22,6 +23,7 @@ final class PropertyEncoder
         private readonly \Closure $getter,
         private readonly Encoder $encoder,
     ) {
+        Arguments::text($key, 'a property name');
     }
 
     /** @param T $value */

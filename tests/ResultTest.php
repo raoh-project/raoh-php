@@ -115,4 +115,38 @@ class ResultTest extends TestCase
         $this->assertCount(1, $r->issues->toArray());
         $this->assertSame('/1', $r->issues->toArray()[0]->path->toJsonPointer());
     }
+
+    public function testFailWithUsesDefaultMessageWhenNoneGiven(): void
+    {
+        $r = Result::failWith(
+            Path::root(),
+            'out_of_range',
+            'out_of_range.positive',
+            null,
+            'must be positive',
+        );
+        $issue = $r->issues->toArray()[0];
+        $this->assertSame('out_of_range', $issue->code);
+        $this->assertSame('out_of_range.positive', $issue->messageKey);
+        $this->assertSame('must be positive', $issue->message);
+        $this->assertFalse($issue->customMessage);
+    }
+
+    public function testFailWithMarksExplicitMessageAsCustom(): void
+    {
+        $r = Result::failWith(
+            Path::root(),
+            'out_of_range',
+            'out_of_range.positive',
+            'カスタム',
+            'must be positive',
+        );
+        $issue = $r->issues->toArray()[0];
+        $this->assertSame('カスタム', $issue->message);
+        $this->assertTrue($issue->customMessage);
+        $this->assertSame('out_of_range.positive', $issue->messageKey);
+
+        $resolved = $issue->resolve(fn () => 'resolver output');
+        $this->assertSame('カスタム', $resolved->message);
+    }
 }

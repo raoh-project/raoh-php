@@ -150,7 +150,7 @@ class ArrayDecodersTest extends TestCase
     {
         $r = float_()->decode(3.14);
         $this->assertInstanceOf(Ok::class, $r);
-        $this->assertEqualsWithDelta(3.14, $r->value, 0.001);
+        $this->assertSame('3.14', (string) $r->value);
     }
 
     public function testEnumOfValid(): void
@@ -164,7 +164,7 @@ class ArrayDecodersTest extends TestCase
     {
         $r = enum_of(\Raoh\Tests\Fixtures\Status::class)->decode('unknown');
         $this->assertInstanceOf(Err::class, $r);
-        $this->assertSame('invalid_value', $r->issues->toArray()[0]->code);
+        $this->assertSame('invalid_format.enum', $r->issues->toArray()[0]->messageKey);
     }
 
     public function testEnumOfRequired(): void
@@ -185,7 +185,7 @@ class ArrayDecodersTest extends TestCase
     {
         $r = enum_of(\Raoh\Tests\Fixtures\Color::class)->decode('Green');
         $this->assertInstanceOf(Err::class, $r);
-        $this->assertSame('invalid_value', $r->issues->toArray()[0]->code);
+        $this->assertSame('invalid_format.enum', $r->issues->toArray()[0]->messageKey);
     }
 
     public function testEnumOfNotEnumThrows(): void

@@ -25,6 +25,11 @@ final class Combiner
      */
     public function __construct(private readonly array $decoders)
     {
+        foreach ($decoders as $decoder) {
+            if (!$decoder instanceof Decoder) {
+                throw new \InvalidArgumentException('combine takes decoders, not ' . get_debug_type($decoder));
+            }
+        }
     }
 
     /**

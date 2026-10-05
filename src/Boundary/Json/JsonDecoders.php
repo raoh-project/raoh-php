@@ -7,7 +7,8 @@ namespace Raoh\Boundary\Json;
 use Raoh\Boundary\Array_\ArrayDecoders;
 use Raoh\CallableDecoder;
 use Raoh\Decoder;
-use Raoh\ErrorCodes;
+use Raoh\Input\Json;
+use Raoh\Internal\Input;
 use Raoh\Path;
 use Raoh\Result;
 
@@ -18,12 +19,13 @@ final class JsonDecoders
     }
 
     /**
-     * Wrap any array-based decoder to accept a raw JSON string as input.
-     * Parses the JSON string, then delegates to $dec.
+     * Wrap any decoder to accept a raw JSON string as input. The text is read into the input
+     * model by {@see Json::parse()}, which keeps every number as it is written, and then given
+     * to $dec. Text that is not JSON gives `invalid_format`.
      *
      * @template T
-     * @param Decoder<array<string, mixed>, T> $dec
-     * @return Decoder<string, T>
+     * @param Decoder<mixed, T> $dec
+     * @return Decoder<mixed, T>
      */
     public static function fromJson(Decoder $dec, int $depth = 512): Decoder
     {
@@ -33,21 +35,12 @@ final class JsonDecoders
         return CallableDecoder::of(function (mixed $in, ?Path $path = null) use ($dec, $depth): Result {
             $p = $path ?? Path::root();
             if (!is_string($in)) {
-                return Result::fail(
-                    $p,
-                    ErrorCodes::TypeMismatch->value,
-                    'expected JSON string',
-                    ['expected' => 'string'],
-                );
+                return Input::mismatch($in, $p, 'string');
             }
             try {
-                $decoded = json_decode($in, true, $depth, JSON_THROW_ON_ERROR);
+                $decoded = Json::parse($in, $depth);
             } catch (\JsonException $e) {
-                return Result::fail(
-                    $p,
-                    ErrorCodes::InvalidFormat->value,
-                    'invalid JSON: ' . $e->getMessage(),
-                );
+                return Result::issue($p, 'invalid_format.json', ['reason' => $e->getMessage()]);
             }
             return $dec->decode($decoded, $p);
         });
@@ -55,25 +48,25 @@ final class JsonDecoders
 
     // Convenience re-exports from ArrayDecoders
 
-    /** @return \Raoh\Builtin\StringDecoder<mixed> */
+    /** @return \Raoh\Builtin\StringDecoder */
     public static function string_(): \Raoh\Builtin\StringDecoder
     {
         return ArrayDecoders::string_();
     }
 
-    /** @return \Raoh\Builtin\IntDecoder<mixed> */
+    /** @return \Raoh\Builtin\IntDecoder */
     public static function int_(): \Raoh\Builtin\IntDecoder
     {
         return ArrayDecoders::int_();
     }
 
-    /** @return \Raoh\Builtin\FloatDecoder<mixed> */
+    /** @return \Raoh\Builtin\FloatDecoder */
     public static function float_(): \Raoh\Builtin\FloatDecoder
     {
         return ArrayDecoders::float_();
     }
 
-    /** @return \Raoh\Builtin\BoolDecoder<mixed> */
+    /** @return \Raoh\Builtin\BoolDecoder */
     public static function bool_(): \Raoh\Builtin\BoolDecoder
     {
         return ArrayDecoders::bool_();
@@ -82,7 +75,7 @@ final class JsonDecoders
     /**
      * @template T
      * @param Decoder<mixed, T> $dec
-     * @return \Raoh\FieldDecoder&Decoder<array<string, mixed>, T>
+     * @return \Raoh\FieldDecoder<mixed, T>
      */
     public static function field(string $name, Decoder $dec): \Raoh\FieldDecoder
     {
@@ -92,16 +85,16 @@ final class JsonDecoders
     /**
      * @template T
      * @param Decoder<mixed, T> $dec
-     * @return Decoder<array<string, mixed>, T|null>
+     * @return \Raoh\FieldDecoder<mixed, T|null>
      */
-    public static function optionalField(string $name, Decoder $dec): Decoder
+    public static function optionalField(string $name, Decoder $dec): \Raoh\FieldDecoder
     {
         return ArrayDecoders::optionalField($name, $dec);
     }
 
     /**
      * @template T
-     * @param Decoder<array<string, mixed>, T> $dec
+     * @param Decoder<mixed, T> $dec
      * @return Decoder<mixed, T>
      */
     public static function nested(Decoder $dec): Decoder

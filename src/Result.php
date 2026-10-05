@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Raoh;
 
+use Raoh\Internal\Arguments;
+
 /**
- * @template T
+ * @template-covariant T
  */
 abstract readonly class Result
 {
@@ -29,24 +31,85 @@ abstract readonly class Result
 
     /**
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
     public static function fail(
         Path $path,
         string $code,
         string $message,
         array $meta = [],
+        ?string $messageKey = null,
     ): Err {
-        return new Err(Issues::empty()->add(Issue::of($path, $code, $message, $meta)));
+        return new Err(Issues::empty()->add(Issue::of($path, $code, $message, $meta, $messageKey)));
     }
 
     /**
      * @return Err<never>
-     * @param array<string, mixed> $meta
+     * @param array<array-key, mixed> $meta
      */
-    public static function failAtRoot(string $code, string $message, array $meta = []): Err
+    public static function failAtRoot(
+        string $code,
+        string $message,
+        array $meta = [],
+        ?string $messageKey = null,
+    ): Err {
+        return self::fail(Path::root(), $code, $message, $meta, $messageKey);
+    }
+
+    /**
+     * Fails with a builtin default message, or an explicit one the caller supplied.
+     *
+     * `$message` is what a constraint's `?string $message = null` parameter received: when
+     * present, it becomes the issue's message and is marked custom, so `Issue::resolve()`
+     * never replaces it. When absent, `$defaultMessage` is used and the message stays
+     * subject to resolution via `$messageKey`.
+     *
+     * @return Err<never>
+     * @param array<array-key, mixed> $meta
+     */
+    public static function failWith(
+        Path $path,
+        string $code,
+        string $messageKey,
+        ?string $message,
+        string $defaultMessage,
+        array $meta = [],
+    ): Err {
+        Arguments::text($defaultMessage, 'the default message');
+        if ($message !== null) {
+            return new Err(Issues::empty()->add(
+                new Issue($path, $code, $message, $meta, true, $messageKey),
+            ));
+        }
+        return new Err(Issues::empty()->add(Issue::of($path, $code, $defaultMessage, $meta, $messageKey)));
+    }
+
+    /**
+     * Fails with one issue whose message the caller gives, which resolving leaves as it is.
+     *
+     * @return Err<never>
+     * @param array<array-key, mixed> $meta
+     */
+    public static function failCustom(
+        Path $path,
+        string $code,
+        string $message,
+        array $meta = [],
+        ?string $messageKey = null,
+    ): Err {
+        return new Err(Issues::empty()->add(Issue::custom($path, $code, $message, $meta, $messageKey)));
+    }
+
+    /**
+     * Fails with one issue of a variant the decoders give, with the message given or derived.
+     *
+     * @internal
+     * @return Err<never>
+     * @param array<array-key, mixed> $meta
+     */
+    public static function issue(Path $path, string $messageKey, array $meta = [], ?string $message = null): Err
     {
-        return self::fail(Path::root(), $code, $message, $meta);
+        return new Err(Issues::empty()->add(Issue::derived($path, $messageKey, $meta, $message)));
     }
 
     public function isOk(): bool
