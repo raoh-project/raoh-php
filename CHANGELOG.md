@@ -30,6 +30,7 @@ Follows the [Raoh Specification](https://github.com/raoh-project/raoh-specificat
 - `field()` gives a member that is not there to its decoder as absent, and gives `type_mismatch` (expected `object`) when the input is not an object; `type_mismatch` carries `actual`, the kind of input found
 - `one_of()` gives `one_of_failed` listing each candidate's issues in `meta.candidates`
 - `withDefault()` gives the default for a null or absent input only; a failure of the inner decoder is given as it is
+- A PHP value the input model has no place for, such as a `DateTime`, an uploaded file left in a request array, or a NaN or infinite float, gives `type_mismatch` whose `actual` names its PHP type (`DateTimeImmutable`, `NAN`); a PHP float is read as its shortest text whatever `serialize_precision` is
 - `Issues::toJsonList()` writes a decimal or a temporal value in `meta` as its text, and a float JSON cannot carry as a tag such as `{"float": "-0"}`
 
 ### Breaking

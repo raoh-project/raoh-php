@@ -18,6 +18,11 @@ use Raoh\Input\JsonObject;
  * empty array, since PHP does not tell them apart. {@see Absent} is the value of a member that is
  * not there.
  *
+ * A value the input model has no place for, such as a DateTime, an UploadedFile a framework left in
+ * a request array, or a float that is NaN or infinite, is of no kind a decoder reads: it gives
+ * `type_mismatch`, whose `actual` names the PHP type found, as the specification lets an
+ * implementation that reads host values say in its own words.
+ *
  * @internal
  */
 final class Input
@@ -32,7 +37,8 @@ final class Input
     }
 
     /**
-     * The kind of the value, as the `actual` of a type mismatch names it.
+     * The kind of the value, as the `actual` of a type mismatch names it: one of the kinds of the
+     * input model, or the PHP type of a value outside it.
      */
     public static function kind(mixed $in): string
     {
@@ -41,10 +47,11 @@ final class Input
             $in === null => 'null',
             is_bool($in) => 'boolean',
             is_string($in) => 'string',
-            $in instanceof JsonNumber, is_int($in), is_float($in) => 'number',
+            $in instanceof JsonNumber, is_int($in) => 'number',
+            is_float($in) => is_finite($in) ? 'number' : (is_nan($in) ? 'NAN' : 'INF'),
             is_array($in) => array_is_list($in) ? 'array' : 'object',
             $in instanceof JsonObject, $in instanceof \stdClass => 'object',
-            default => throw self::outside($in),
+            default => get_debug_type($in),
         };
     }
 
@@ -88,14 +95,29 @@ final class Input
         if (is_int($in)) {
             return (string) $in;
         }
-        if (is_float($in)) {
-            if (!is_finite($in)) {
-                throw self::outside($in);
-            }
-            // var_export writes the shortest text that reads back as the float, with a fraction.
-            return var_export($in, true);
+        if (is_float($in) && is_finite($in)) {
+            return self::shortest($in);
         }
         return null;
+    }
+
+    /**
+     * The shortest text that reads back as the float, with a fraction, as var_export writes it
+     * under serialize_precision -1. Another serialize_precision, such as the 17 of PHP before 7.1
+     * that some php.ini files still set, would write 0.1 as 0.10000000000000001.
+     */
+    private static function shortest(float $f): string
+    {
+        $was = ini_get('serialize_precision');
+        if ($was === '-1') {
+            return var_export($f, true);
+        }
+        ini_set('serialize_precision', '-1');
+        try {
+            return var_export($f, true);
+        } finally {
+            ini_set('serialize_precision', $was === false ? '-1' : $was);
+        }
     }
 
     /**
@@ -106,12 +128,5 @@ final class Input
     public static function member(array $members, string $name): mixed
     {
         return array_key_exists($name, $members) ? $members[$name] : new Absent();
-    }
-
-    private static function outside(mixed $in): \InvalidArgumentException
-    {
-        return new \InvalidArgumentException(
-            'the input model has no place for ' . get_debug_type($in),
-        );
     }
 }
