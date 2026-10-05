@@ -6,6 +6,7 @@ namespace Raoh\Tests\Value\Temporal;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Raoh\Tests\Specification;
 use Raoh\Value\Temporal\Instant;
 use Raoh\Value\Temporal\LocalDate;
 use Raoh\Value\Temporal\LocalDateTime;
@@ -18,7 +19,6 @@ use Raoh\Value\Temporal\OffsetDateTime;
  */
 final class TemporalSuiteTest extends TestCase
 {
-    private const SUITE = '/../../../../raoh-specification/suite/core/temporal.json';
     private const OPERATIONS = ['date', 'time', 'dateTime', 'offsetDateTime', 'iso8601'];
 
     /**
@@ -26,7 +26,11 @@ final class TemporalSuiteTest extends TestCase
      */
     public static function cases(): iterable
     {
-        $path = __DIR__ . self::SUITE;
+        $path = Specification::file('suite/core/temporal.json');
+        if ($path === null) {
+            yield 'suite not found' => ['', '', null, []];
+            return;
+        }
         $json = file_get_contents($path);
         if ($json === false) {
             self::fail('cannot read ' . $path);
@@ -57,6 +61,9 @@ final class TemporalSuiteTest extends TestCase
     #[DataProvider('cases')]
     public function testCase(string $operation, string $input, ?array $compare, array $case): void
     {
+        if ($operation === '') {
+            $this->markTestSkipped('raoh-specification not found; set RAOH_SPECIFICATION_DIR');
+        }
         $value = self::parse($operation, $input);
         if (array_key_exists('ok', $case)) {
             $this->assertNotNull($value, "$input is admitted");

@@ -19,6 +19,8 @@ Follows the [Raoh Specification](https://github.com/raoh-project/raoh-specificat
 - `Raoh\Messages`: the specification's English and Japanese catalogues, shipped in `resources/messages/`, usable as a resolver for `Issues::resolve()`
 - `Issue::custom()`, `Result::failCustom()`: an issue whose message its maker gives, which resolving leaves alone
 - `conformance/` and `scripts/conformance.sh`: the runner of the specification's cases, pinned to its 0.9 release in `conformance/spec.lock`
+- CI on every pull request and on pushes to `main` and `develop`: `composer validate`, PHPStan, and the tests on the oldest and the newest PHP without intl, bcmath or gmp, and the specification's cases checked by its verifier
+- The `Release` workflow, which checks a commit on `main`, runs CI on it, and only then tags it `vX.Y.Z` and publishes the release notes from this file; the README says how a release is made
 
 ### Changed
 

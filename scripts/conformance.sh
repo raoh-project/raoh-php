@@ -11,6 +11,8 @@
 #
 # Needs git, jq, Go and PHP. RAOH_SPECIFICATION_DIR names a checkout to use instead of cloning
 # one; it has to be at the pinned commit with no changes to what the commit holds.
+# RAOH_PHP_VERSION names the version the result reports, as the release workflow sets it; without
+# it the result reports develop's branch alias.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

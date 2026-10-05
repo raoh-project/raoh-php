@@ -199,7 +199,10 @@ function run(array $args): void
         ]),
         'implementation' => new JsonObject([
             'name' => 'raoh-php',
-            'version' => $composer['extra']['branch-alias']['dev-develop'] ?? 'dev',
+            // The release workflow names the version it is about to tag; otherwise develop's alias.
+            'version' => (getenv('RAOH_PHP_VERSION') ?: null)
+                ?? $composer['extra']['branch-alias']['dev-develop']
+                ?? 'dev',
             'revision' => $args['implementation-revision'],
         ]),
         'environment' => new JsonObject([

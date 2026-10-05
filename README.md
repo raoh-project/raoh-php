@@ -744,7 +744,23 @@ scripts/conformance.sh
 
 Raoh Specification 0.9 — core: conformant; encode: conformant; messages-en: conformant; messages-ja: conformant.
 
-The script needs git, jq and Go besides PHP. `RAOH_SPECIFICATION_DIR` names a checkout of the specification to use instead of cloning one; it has to be at the pinned commit.
+The script needs git, jq and Go besides PHP. `RAOH_SPECIFICATION_DIR` names a checkout of the specification to use instead of cloning one; it has to be at the pinned commit. CI runs it on every pull request and on every push to `main` and `develop`, beside PHPStan and the tests on the oldest PHP `composer.json` takes and on the newest. The tests that read the suite fail there rather than skip when it cannot be read (`RAOH_REQUIRE_SPECIFICATION=1`).
+
+## Releasing
+
+`raoh/raoh` is published on Packagist, which reads this repository's tags through its GitHub webhook. A release is a tag `vX.Y.Z`, made by the `Release` workflow and by nothing else, and nothing in `composer.json` names a version. Packagist keeps the commit it first saw for a version, so a tag that has been pushed is never moved: a release that is wrong is followed by another.
+
+`develop` is published as `dev-develop`, which `extra.branch-alias` in `composer.json` names `X.Y.x-dev`, so `composer require raoh/raoh:0.9.x-dev` follows `develop` ahead of a release, as a Maven snapshot does. A constraint written for releases, `^0.9`, takes no development version.
+
+1. On a branch from `develop`, rename `## [Unreleased]` in `CHANGELOG.md` to `## [X.Y.Z] - YYYY-MM-DD`, and open a pull request to `main`.
+2. Merge it, and run the `Release` workflow on `main` with the version, `X.Y.Z` without the `v`:
+   ```sh
+   gh workflow run release.yml --ref main -f version=X.Y.Z
+   ```
+   The workflow refuses a run that is not on `main`, a version that is not `X.Y.Z`, one whose tag exists or that is not after the latest release, a `composer.json` that names a version, and a `CHANGELOG.md` with no heading for it. It runs the whole of CI on the commit, the conformance report naming the version, and only once that passes tags the commit `vX.Y.Z` and publishes a GitHub release whose notes are the version's section of `CHANGELOG.md`.
+3. Merge `main` back into `develop`, and start a new `## [Unreleased]` there. When `develop` begins the next minor version, set `extra.branch-alias` to it (`0.10.x-dev`).
+
+Packagist lists the tag once its webhook fires. Where the repository has the secrets `PACKAGIST_USERNAME` and `PACKAGIST_TOKEN` (an API token of a maintainer of the package on packagist.org), the workflow also asks Packagist to read the repository at once, so that a webhook that is missing or failed does not leave the release unlisted.
 
 ## Design Direction
 

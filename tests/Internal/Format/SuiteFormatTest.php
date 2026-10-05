@@ -6,6 +6,7 @@ namespace Raoh\Tests\Internal\Format;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Raoh\Tests\Specification;
 use Raoh\Internal\Format\Cuid;
 use Raoh\Internal\Format\Email;
 use Raoh\Internal\Format\Ip;
@@ -17,7 +18,7 @@ use Raoh\Internal\Format\Uuid;
  * Runs the format operations against the cases of the Raoh Specification's
  * suite/core/string.json whose decoder is exactly ["string", [OP]].
  *
- * The specification is looked up in $RAOH_SPEC_DIR, or next to this repository.
+ * The specification is found as {@see \Raoh\Tests\Specification} says.
  */
 final class SuiteFormatTest extends TestCase
 {
@@ -28,12 +29,8 @@ final class SuiteFormatTest extends TestCase
      */
     public static function cases(): iterable
     {
-        $dir = getenv('RAOH_SPEC_DIR');
-        if ($dir === false || $dir === '') {
-            $dir = dirname(__DIR__, 4) . '/raoh-specification';
-        }
-        $file = $dir . '/suite/core/string.json';
-        if (!is_file($file)) {
+        $file = Specification::file('suite/core/string.json');
+        if ($file === null) {
             yield 'suite not found' => ['', '', null];
             return;
         }
@@ -62,7 +59,7 @@ final class SuiteFormatTest extends TestCase
     public function testSuiteCase(string $op, string $input, ?string $expected): void
     {
         if ($op === '') {
-            $this->markTestSkipped('raoh-specification not found; set RAOH_SPEC_DIR');
+            $this->markTestSkipped('raoh-specification not found; set RAOH_SPECIFICATION_DIR');
         }
         if ($op === 'uuid') {
             $this->assertSame($expected, Uuid::read($input));

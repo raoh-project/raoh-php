@@ -6,6 +6,7 @@ namespace Raoh\Tests\Value;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Raoh\Tests\Specification;
 use Raoh\Internal\Number\Floats;
 use Raoh\Value\Decimal;
 
@@ -14,7 +15,7 @@ use Raoh\Value\Decimal;
  * exactly ["float"], ["double"] or ["decimal"] and that succeed, and compares the value with the
  * case's observation. Cases with issues are left to the decoders.
  *
- * The specification is looked up in $RAOH_SPEC_DIR, or next to this repository.
+ * The specification is found as {@see \Raoh\Tests\Specification} says.
  */
 final class NumberSuiteTest extends TestCase
 {
@@ -25,13 +26,9 @@ final class NumberSuiteTest extends TestCase
      */
     public static function cases(): iterable
     {
-        $dir = getenv('RAOH_SPEC_DIR');
-        if ($dir === false || $dir === '') {
-            $dir = dirname(__DIR__, 3) . '/raoh-specification';
-        }
         foreach (self::FILES as $type => $name) {
-            $file = $dir . '/suite/core/' . $name;
-            if (!is_file($file)) {
+            $file = Specification::file('suite/core/' . $name);
+            if ($file === null) {
                 yield 'suite not found' => ['', '', ''];
                 return;
             }
@@ -59,7 +56,7 @@ final class NumberSuiteTest extends TestCase
     public function testSuiteCase(string $type, string $input, string|array $expected): void
     {
         if ($type === '') {
-            $this->markTestSkipped('raoh-specification not found; set RAOH_SPEC_DIR');
+            $this->markTestSkipped('raoh-specification not found; set RAOH_SPECIFICATION_DIR');
         }
         if ($type === 'decimal') {
             $this->assertIsString($expected);
