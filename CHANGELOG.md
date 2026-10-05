@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] - 2026-10-06
 
-Follows the [Raoh Specification](https://github.com/raoh-project/raoh-specification) 0.9 and reads text with [notation-199x](https://github.com/raoh-project/notation-199x) 0.2.0, as Raoh for Java, TypeScript, Go and Rust 0.9.0 do. Checked with the specification's verifier: core, encode, messages-en and messages-ja are all conformant. Available ahead of a tagged `0.9.0` release via `composer require raoh/raoh:0.9.x-dev`, aliased from the `develop` branch. The repository moved to [raoh-project/raoh-php](https://github.com/raoh-project/raoh-php).
+Follows the [Raoh Specification](https://github.com/raoh-project/raoh-specification) 0.9 and reads text with [notation-199x](https://github.com/raoh-project/notation-199x) 0.2.0, as Raoh for Java, TypeScript, Go and Rust 0.9.0 do. Checked with the specification's verifier: core, encode, messages-en and messages-ja are all conformant. The repository moved to [raoh-project/raoh-php](https://github.com/raoh-project/raoh-php).
 
 ### Added
 
