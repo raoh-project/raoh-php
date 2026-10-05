@@ -7,6 +7,8 @@ namespace Raoh\Tests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Raoh\Absent;
+use Raoh\Builtin\DictDecoder;
+use Raoh\Builtin\ListDecoder;
 use Raoh\Decoder;
 use Raoh\Decoders;
 use Raoh\Err;
@@ -54,9 +56,31 @@ class BuildOrRefuseTest extends TestCase
                 $runs[] = ["\${$p->getName()} {$what}", $args];
             }
         }
+        $receivers = [null];
+        if ($entry instanceof \ReflectionMethod && !$entry->isStatic()
+            && in_array($entry->getDeclaringClass()->getName(), [ListDecoder::class, DictDecoder::class], true)) {
+            // An operation on elements meets every kind of element a decoder can give: values of
+            // the model, a presence, and what a function given to map() made.
+            $receivers = [];
+            foreach (self::elements() as $element) {
+                $receivers[] = $entry->getDeclaringClass()->getName() === ListDecoder::class
+                    ? Decoders::list_($element)
+                    : Decoders::dict($element);
+            }
+        }
+        foreach ($receivers as $receiver) {
+            $this->buildAndDecode($entry, $runs, $receiver);
+        }
+    }
+
+    /**
+     * @param list<array{string, list<mixed>}> $runs
+     */
+    private function buildAndDecode(\ReflectionMethod|\ReflectionFunction $entry, array $runs, ?object $receiver): void
+    {
         foreach ($runs as [$what, $args]) {
             try {
-                $decoder = EntryPoints::call($entry, $args);
+                $decoder = EntryPoints::call($entry, $args, $receiver);
             } catch (\InvalidArgumentException | \TypeError) {
                 $this->addToAssertionCount(1);
                 continue;
@@ -137,6 +161,23 @@ class BuildOrRefuseTest extends TestCase
     }
 
     /**
+     * Element decoders that give each kind of value: of the model, a presence, an object of the
+     * application (the same one each time, as a cache gives), and a resource.
+     *
+     * @return list<Decoder<mixed, mixed>>
+     */
+    private static function elements(): array
+    {
+        $shared = new \stdClass();
+        return [
+            Decoders::int_(),
+            Decoders::object(Decoders::optionalNullableField('a', Decoders::int_())),
+            Decoders::int_()->map(static fn (int $v): \stdClass => $shared),
+            Decoders::int_()->map(static fn (int $v): mixed => STDIN),
+        ];
+    }
+
+    /**
      * Inputs good and bad, so that each check a decoder makes runs and fails.
      *
      * @return array<string, mixed>
@@ -159,6 +200,8 @@ class BuildOrRefuseTest extends TestCase
             'true' => true,
             '[]' => [],
             '[1,2,2]' => [1, 2, 2],
+            '[[],[]]' => [[], []],
+            '{"a":1,"b":1}' => ['a' => 1, 'b' => 1],
             '{"a":1}' => ['a' => 1],
             '{"kind":"a","a":1}' => ['kind' => 'a', 'a' => 1],
             'a JSON object' => Json::parse('{"a":"x","b":1.50}'),

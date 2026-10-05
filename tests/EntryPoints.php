@@ -48,7 +48,7 @@ final class EntryPoints
     /**
      * @param list<mixed> $args
      */
-    public static function call(\ReflectionMethod|\ReflectionFunction $entry, array $args): mixed
+    public static function call(\ReflectionMethod|\ReflectionFunction $entry, array $args, ?object $receiver = null): mixed
     {
         if ($entry instanceof \ReflectionFunction) {
             return $entry->invokeArgs($args);
@@ -60,7 +60,7 @@ final class EntryPoints
             return $entry->invokeArgs(null, $args);
         }
         // Called by name, as a caller does, so that a trait's method is called on a class using it.
-        return self::receiver($entry)->{$entry->getName()}(...$args);
+        return ($receiver ?? self::receiver($entry))->{$entry->getName()}(...$args);
     }
 
     /**

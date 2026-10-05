@@ -274,8 +274,8 @@ final class Decoders
      * The default for a null or absent input; anything else goes to the decoder, whose failures
      * are given as they are.
      *
-     * The default is the value itself. A Closure is refused: until 0.9 a callable was called with
-     * the issues, and a Closure kept as the value would be a decoder that silently gives a function.
+     * The default is the value itself. A function is refused: until 0.9 a callable was called with
+     * the issues, and a function kept as the value would be a decoder that silently gives it.
      *
      * @template T
      * @param Decoder<mixed, T> $dec
@@ -296,7 +296,7 @@ final class Decoders
     /**
      * The fallback in place of any failure.
      *
-     * The fallback is the value itself. A Closure is refused: until 0.9 a callable was called with
+     * The fallback is the value itself. A function is refused: until 0.9 a callable was called with
      * the issues, which {@see recoverWith()} does now.
      *
      * @template T
@@ -535,10 +535,16 @@ final class Decoders
         };
     }
 
+    /**
+     * Refuses a function where a value is meant. Until 0.9 recover() and withDefault() called
+     * whatever is_callable() said was a function, and kept as a value it would silently be the
+     * result: a Closure, an object with __invoke and an array callable are refused. A string is a
+     * value, also one that names a function ('date', 'max'), as a default string often does.
+     */
     private static function refuseClosure(mixed $value, string $form, string $instead): void
     {
-        if ($value instanceof \Closure) {
-            throw new \InvalidArgumentException("{$form}() takes a value, not a Closure; use {$instead}");
+        if (!is_string($value) && is_callable($value)) {
+            throw new \InvalidArgumentException("{$form}() takes a value, not a function; use {$instead}");
         }
     }
 }

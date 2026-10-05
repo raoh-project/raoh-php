@@ -30,6 +30,13 @@ class ArgumentTest extends TestCase
         yield 'a known field that is not a string' => [static fn () => Decoders::strict(int_(), ['a', 2])];
         yield 'a Closure as the fallback of recover' => [static fn () => int_()->recover(static fn (Issues $i): int => 42)];
         yield 'a Closure as the default of withDefault' => [static fn () => int_()->withDefault(static fn (): int => 0)];
+        yield 'an invokable object as the fallback of recover' => [static fn () => int_()->recover(new class () {
+            public function __invoke(Issues $i): int
+            {
+                return 42;
+            }
+        })];
+        yield 'an array callable as the default of withDefault' => [static fn () => int_()->withDefault([new \ArrayObject(), 'count'])];
         yield 'a bound of another temporal type' => [static fn () => string_()->time()->after('2024-01-01')];
         yield 'an int32 bound outside int32' => [static fn () => int_()->min(PHP_INT_MAX)];
         yield 'a pattern the language does not have' => [static fn () => string_()->pattern('(?=a)a')];
@@ -42,6 +49,13 @@ class ArgumentTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $build();
+    }
+
+    public function testAStringIsAValueEvenWhereItNamesAFunction(): void
+    {
+        $r = Decoders::string_()->withDefault('date')->decode(null);
+        $this->assertInstanceOf(Ok::class, $r);
+        $this->assertSame('date', $r->value);
     }
 
     public function testRecoverWithComputesTheValueFromTheIssues(): void

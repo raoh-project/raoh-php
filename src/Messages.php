@@ -6,7 +6,7 @@ namespace Raoh;
 
 use Raoh\Internal\Arguments;
 use Raoh\Internal\MessageForm;
-use Raoh\Internal\Text;
+use Raoh\Internal\Properties;
 
 /**
  * A message catalogue: a template for each message key, which an issue's metadata fills in.
@@ -46,19 +46,11 @@ final class Messages
      */
     public static function fromProperties(string $text): self
     {
-        Arguments::text($text, 'a properties file');
         $templates = [];
-        foreach (preg_split('/\r\n|\r|\n/', $text) ?: [] as $line) {
-            $line = ltrim($line, " \t\f");
-            if ($line === '' || $line[0] === '#' || $line[0] === '!') {
-                continue;
-            }
-            if (preg_match('/\A((?:[^=:\\\\\s]|\\\\.)+)\s*[=:]?\s*(.*)\z/s', $line, $m) !== 1) {
-                continue;
-            }
-            $key = self::unescape($m[1]);
+        foreach (Properties::read($text) as $key => $template) {
+            $key = (string) $key;
             if (str_starts_with($key, 'raoh.')) {
-                $templates[substr($key, 5)] = self::unescape($m[2]);
+                $templates[substr($key, 5)] = $template;
             }
         }
         return new self($templates);
@@ -127,32 +119,5 @@ final class Messages
             throw new \RuntimeException("cannot read {$path}");
         }
         return self::fromProperties($text);
-    }
-
-    private static function unescape(string $s): string
-    {
-        $out = '';
-        $at = 0;
-        $n = strlen($s);
-        while (($slash = strpos($s, '\\', $at)) !== false) {
-            $out .= substr($s, $at, $slash - $at);
-            $e = $s[$slash + 1] ?? '';
-            if ($e === 'u') {
-                $read = Text::unicodeEscape($s, $slash)
-                    ?? throw new \InvalidArgumentException('a \\u escape of no character at byte ' . $slash);
-                $out .= $read[0];
-                $at = $read[1];
-                continue;
-            }
-            $out .= match ($e) {
-                't' => "\t",
-                'n' => "\n",
-                'r' => "\r",
-                'f' => "\f",
-                default => $e,
-            };
-            $at = min($slash + 2, $n);
-        }
-        return $out . substr($s, $at);
     }
 }

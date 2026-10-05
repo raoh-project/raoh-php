@@ -64,7 +64,7 @@ final class ListDecoder extends BaseDecoder
             }
             return $duplicates === []
                 ? Result::ok($v)
-                : Result::issue($p, 'duplicate_element', ['duplicates' => $duplicates], $message);
+                : Result::issue($p, 'duplicate_element', ['duplicates' => Wire::describe($duplicates)], $message);
         });
     }
 

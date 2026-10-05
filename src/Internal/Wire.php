@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Raoh\Internal;
 
+use Raoh\PresentNull;
+use Raoh\Present;
+use Raoh\Absent;
 use Raoh\Internal\Number\Floats;
 use Raoh\Issues;
 use Raoh\Value\Decimal;
@@ -20,8 +23,11 @@ use Raoh\Value\Temporal\OffsetDateTime;
  *
  * They are the values of the specification's value model as raoh-php holds them: null, a bool, an
  * int, a float (a float64) and a {@see Float32}, a string of Unicode scalar values, a
- * {@see Decimal}, the five temporal values, an enum case (written by its name), the issues
- * `one_of_failed` lists, and lists and maps of these with names that are text. Nothing else is:
+ * {@see Decimal}, the five temporal values, an enum case (written by its name), a presence
+ * (`"absent"`, `"null"` or `{"present": v}`, as the specification observes one), the issues
+ * `one_of_failed` lists, and lists and maps of these with names that are text. These are every
+ * value a decoder of this library gives, so an operation may put what it decoded into an issue;
+ * a test holds the decoders of the specification's suite to that. Nothing else is:
  * not a resource, not an object of another class, and not a Stringable, whose text could be
  * anything and could change between the issue's making and its writing.
  *
@@ -57,7 +63,9 @@ final class Wire
             throw new \InvalidArgumentException("{$what} is not a value an issue can hold: " . get_debug_type($v)
                 . (is_string($v) ? ' that is not UTF-8' : ''));
         }
-        if ($kind === 'map') {
+        if ($kind === 'presence' && $v instanceof Present) {
+            self::check($v->value, $what);
+        } elseif ($kind === 'map') {
             assert(is_array($v));
             self::checkMap($v, $what);
         } elseif ($kind === 'list') {
@@ -88,6 +96,27 @@ final class Wire
     }
 
     /**
+     * The value as metadata can hold it: itself where it is a value of the model, and otherwise
+     * what it is in PHP's words (`App\Tag`, `resource (stream)`), as a decoder names the kind of
+     * an input outside the model. An operation that puts a value it decoded into an issue, such as
+     * the duplicates `unique()` lists, puts it through this: what a function given to `map()` made
+     * is the application's, and no rule of this library says it can be written.
+     */
+    public static function describe(mixed $v): mixed
+    {
+        if ($v instanceof Present) {
+            return new Present(self::describe($v->value));
+        }
+        if (is_array($v)) {
+            // Each element as metadata holds it; names that are not text are no names a map has.
+            return Input::members($v) === null && !array_is_list($v)
+                ? Input::kind($v)
+                : array_map(self::describe(...), $v);
+        }
+        return self::kind($v) === null ? Input::kind($v) : $v;
+    }
+
+    /**
      * The value as json_encode writes it the way the specification observes it: a decimal and a
      * temporal value as their text, a float JSON cannot carry (-0, NaN, ±Infinity) as a tag such as
      * `{"float": "-0"}`, and the issues `one_of_failed` lists as issues are written.
@@ -100,6 +129,11 @@ final class Wire
             'float32' => self::float($v->value, 32),
             'text' => (string) $v,
             'enum' => $v->name,
+            'presence' => match (true) {
+                $v instanceof Absent => 'absent',
+                $v instanceof PresentNull => 'null',
+                default => ['present' => self::of($v->value)],
+            },
             'issues' => $v->toJsonList(),
             'list', 'map' => array_map(self::of(...), $v),
             default => throw new \LogicException(get_debug_type($v) . ' is not a value an issue can hold'),
@@ -126,6 +160,8 @@ final class Wire
             $v instanceof Float32 => 'float32',
             self::isText($v) => 'text',
             $v instanceof \UnitEnum => Input::text($v->name) === null ? null : 'enum',
+            $v instanceof Absent, $v instanceof PresentNull => 'presence',
+            $v instanceof Present => self::kind($v->value) === null ? null : 'presence',
             $v instanceof Issues => 'issues',
             is_array($v) => array_is_list($v) ? 'list' : 'map',
             default => null,
