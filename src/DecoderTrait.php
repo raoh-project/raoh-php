@@ -88,12 +88,12 @@ trait DecoderTrait
     /**
      * The default for a null or absent input; anything else goes to this decoder.
      *
-     * @param T $default
+     * @param T $fallback
      * @return Decoder<I, T>
      */
-    public function withDefault(mixed $default): Decoder
+    public function withDefault(mixed $fallback): Decoder
     {
-        return Decoders::withDefault($this, $default);
+        return Decoders::withDefault($this, $fallback);
     }
 
     /**
@@ -132,16 +132,12 @@ trait DecoderTrait
     }
 
     /**
-     * @return Decoder<list<I>, list<T>>
+     * An array of what this decoder reads, as {@see Decoders::list_()} reads one.
+     *
+     * @return Decoder<mixed, list<T>>
      */
     public function asList(): Decoder
     {
-        return CallableDecoder::of(
-            fn (mixed $items, ?Path $path = null) => Result::traverse(
-                $items,
-                fn (mixed $item, Path $p) => $this->decode($item, $p),
-                $path ?? Path::root(),
-            ),
-        );
+        return Decoders::list_($this);
     }
 }

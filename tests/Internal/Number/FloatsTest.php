@@ -142,6 +142,19 @@ final class FloatsTest extends TestCase
      */
     public function testAgreesWithPhpShortestRepresentation(): void
     {
+        // What PHP writes follows serialize_precision; -1 is the shortest it writes. The library
+        // reads nothing of the kind, and CI runs the tests under 17 to hold it to that.
+        $was = ini_get('serialize_precision');
+        ini_set('serialize_precision', '-1');
+        try {
+            $this->assertAgreesWithPhpShortestRepresentation();
+        } finally {
+            ini_set('serialize_precision', $was === false ? '-1' : $was);
+        }
+    }
+
+    private function assertAgreesWithPhpShortestRepresentation(): void
+    {
         mt_srand(2024);
         for ($i = 0; $i < 3000; $i++) {
             $bits = (mt_rand(0, 0x7fefffff) << 32) | mt_rand(0, 0xffffffff);

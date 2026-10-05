@@ -48,7 +48,8 @@ final class Values
             is_array($v) => self::arrayKey($v),
             $v instanceof \Stringable => 'o' . $v::class . ':' . $v,
             is_object($v) => 'r' . spl_object_id($v),
-            default => throw new \InvalidArgumentException('no sameness for ' . get_debug_type($v)),
+            // A resource is the same as itself alone, open or closed.
+            default => 'z' . get_debug_type($v) . ':' . (int) $v,
         };
     }
 

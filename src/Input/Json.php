@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Raoh\Input;
 
-use Raoh\Internal\MessageForm;
+use Raoh\Internal\Text;
 use Raoh\Notation199x\ScalarValues;
 
 /**
@@ -176,32 +176,11 @@ final class Json
 
     private function unicodeEscape(): string
     {
-        $unit = $this->hex4();
-        if ($unit >= 0xDC00 && $unit <= 0xDFFF) {
-            throw $this->error('an unpaired surrogate');
-        }
-        if ($unit >= 0xD800 && $unit <= 0xDBFF) {
-            if (substr($this->text, $this->at, 2) !== '\\u') {
-                throw $this->error('an unpaired surrogate');
-            }
-            $this->at += 2;
-            $low = $this->hex4();
-            if ($low < 0xDC00 || $low > 0xDFFF) {
-                throw $this->error('an unpaired surrogate');
-            }
-            $unit = 0x10000 + (($unit - 0xD800) << 10) + ($low - 0xDC00);
-        }
-        return MessageForm::utf8($unit);
-    }
-
-    private function hex4(): int
-    {
-        $digits = substr($this->text, $this->at, 4);
-        if (preg_match('/\A[0-9A-Fa-f]{4}\z/', $digits) !== 1) {
-            throw $this->error('\\u takes four hexadecimal digits');
-        }
-        $this->at += 4;
-        return (int) hexdec($digits);
+        // The escape begins at the backslash, two bytes back.
+        $read = Text::unicodeEscape($this->text, $this->at - 2)
+            ?? throw $this->error('\\u is followed by four hexadecimal digits of a scalar value or a surrogate pair');
+        $this->at = $read[1];
+        return $read[0];
     }
 
     private function word(string $word, ?bool $value): ?bool

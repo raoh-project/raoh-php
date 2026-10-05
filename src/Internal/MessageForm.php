@@ -51,25 +51,4 @@ final class MessageForm
         }
         return '[' . implode(', ', $forms) . ']';
     }
-
-    /**
-     * The UTF-8 bytes of a scalar value.
-     */
-    public static function utf8(int $cp): string
-    {
-        if ($cp < 0 || $cp > 0x10FFFF || ($cp >= 0xD800 && $cp <= 0xDFFF)) {
-            throw new \InvalidArgumentException('not a scalar value: U+' . strtoupper(dechex($cp)));
-        }
-        if ($cp < 0x80) {
-            return chr($cp);
-        }
-        if ($cp < 0x800) {
-            return chr(0xC0 | $cp >> 6) . chr(0x80 | $cp & 0x3F);
-        }
-        if ($cp < 0x10000) {
-            return chr(0xE0 | $cp >> 12) . chr(0x80 | $cp >> 6 & 0x3F) . chr(0x80 | $cp & 0x3F);
-        }
-        return chr(0xF0 | $cp >> 18) . chr(0x80 | $cp >> 12 & 0x3F)
-            . chr(0x80 | $cp >> 6 & 0x3F) . chr(0x80 | $cp & 0x3F);
-    }
 }

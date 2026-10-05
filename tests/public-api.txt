@@ -1,0 +1,511 @@
+final class Raoh\Absent
+  __construct(): mixed
+
+final class Raoh\Boundary\Array_\ArrayDecoders
+  bool_(): Raoh\Builtin\BoolDecoder static
+  bytes(): Raoh\Decoder static {@return Decoder<mixed, string>}
+  combine(Raoh\Decoder ...$decoders): Raoh\Combinator\Combiner static {@param Decoder<mixed, mixed> ...$decoders}
+  decimal(): Raoh\Builtin\DecimalDecoder static
+  dict(Raoh\Decoder $valueDec): Raoh\Builtin\DictDecoder static {@template T; @param Decoder<mixed, T> $valueDec; @return DictDecoder<T>}
+  double(): Raoh\Builtin\DoubleDecoder static
+  enumOf(array|string $symbols, ?Raoh\Builtin\StringDecoder $string = null, ?string $message = null): Raoh\Decoder static {@param list<string>|class-string<\UnitEnum> $symbols; @return Decoder<mixed, mixed>}
+  field(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder static {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, T>}
+  float_(): Raoh\Builtin\FloatDecoder static
+  int_(): Raoh\Builtin\IntDecoder static
+  listOf(Raoh\Decoder $elementDec): Raoh\Builtin\ListDecoder static {@template T; @param Decoder<mixed, T> $elementDec; @return ListDecoder<T>}
+  literal(string $expected, ?Raoh\Builtin\StringDecoder $string = null, ?string $message = null): Raoh\Decoder static {@return Decoder<mixed, string>}
+  long(): Raoh\Builtin\LongDecoder static
+  nested(Raoh\Decoder $dec): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T>}
+  nullable(Raoh\Decoder $dec): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T|null>}
+  object(Raoh\Decoder ...$fields): Raoh\Builtin\ObjectDecoder static {@param Decoder<mixed, mixed> ...$fields}
+  optionalField(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder static {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, T|null>}
+  optionalNullableField(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder static {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, Absent|PresentNull|Present<T>>}
+  string_(): Raoh\Builtin\StringDecoder static
+
+final class Raoh\Boundary\Array_\Encode\PropertyEncoder {@template T}
+  $key: string
+  __construct(string $key, Closure $getter, Raoh\Encoder $encoder): mixed {@param \Closure(T): mixed $getter; @param Encoder<mixed, mixed> $encoder}
+  encode(mixed $value): mixed {@param T $value}
+
+final class Raoh\Boundary\Json\JsonDecoders
+  bool_(): Raoh\Builtin\BoolDecoder static {@return \Raoh\Builtin\BoolDecoder}
+  combine(Raoh\Decoder ...$decoders): Raoh\Combinator\Combiner static {@param Decoder<mixed, mixed> ...$decoders}
+  field(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder static {@template T; @param Decoder<mixed, T> $dec; @return \Raoh\FieldDecoder<mixed, T>}
+  float_(): Raoh\Builtin\FloatDecoder static {@return \Raoh\Builtin\FloatDecoder}
+  fromJson(Raoh\Decoder $dec, int $depth = 512): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T>}
+  int_(): Raoh\Builtin\IntDecoder static {@return \Raoh\Builtin\IntDecoder}
+  listOf(Raoh\Decoder $dec): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, list<T>>}
+  nested(Raoh\Decoder $dec): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T>}
+  nullable(Raoh\Decoder $dec): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T|null>}
+  optionalField(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder static {@template T; @param Decoder<mixed, T> $dec; @return \Raoh\FieldDecoder<mixed, T|null>}
+  string_(): Raoh\Builtin\StringDecoder static {@return \Raoh\Builtin\StringDecoder}
+
+abstract class Raoh\Builtin\BaseDecoder uses Raoh\DecoderTrait {@template T; @implements Decoder<mixed, T>}
+  __construct(Closure $run): mixed {@param \Closure(mixed, Path): Result<T> $run}
+  decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
+
+final class Raoh\Builtin\BoolDecoder {@extends BaseDecoder<bool>}
+  isFalse(?string $message = null): static
+  isTrue(?string $message = null): static
+
+final class Raoh\Builtin\DecimalDecoder {@extends NumberDecoder<Decimal>}
+  multipleOf(Raoh\Value\Decimal|string|int $divisor, ?string $message = null): static
+  scale(int $max, ?string $message = null): static
+
+final class Raoh\Builtin\DictDecoder {@template V; @extends BaseDecoder<array<array-key, V>>}
+  fixedSize(int $size, ?string $message = null): static
+  maxSize(int $max, ?string $message = null): static
+  minSize(int $min, ?string $message = null): static
+  nonempty(?string $message = null): static
+
+final class Raoh\Builtin\DoubleDecoder {@extends NumberDecoder<float>}
+  oneOf(array $allowed, ?string $message = null): static {@param list<float|int> $allowed}
+
+final class Raoh\Builtin\FloatDecoder {@extends NumberDecoder<Float32>}
+  oneOf(array $allowed, ?string $message = null): static {@param list<float|int|Float32> $allowed}
+
+final class Raoh\Builtin\IntDecoder {@extends NumberDecoder<int>}
+  multipleOf(int $divisor, ?string $message = null): static
+  oneOf(array $allowed, ?string $message = null): static {@param list<int> $allowed}
+
+final class Raoh\Builtin\ListDecoder {@template E; @extends BaseDecoder<list<E>>}
+  contains(mixed $element, ?string $message = null): static {@param E $element}
+  containsAll(array $elements, ?string $message = null): static {@param list<E> $elements}
+  fixedSize(int $size, ?string $message = null): static
+  maxSize(int $max, ?string $message = null): static
+  minSize(int $min, ?string $message = null): static
+  nonempty(?string $message = null): static
+  toSet(): Raoh\Builtin\ListDecoder {@return ListDecoder<E>}
+  unique(?string $message = null): static
+
+final class Raoh\Builtin\LongDecoder {@extends NumberDecoder<int>}
+  multipleOf(int $divisor, ?string $message = null): static
+  oneOf(array $allowed, ?string $message = null): static {@param list<int> $allowed}
+
+abstract class Raoh\Builtin\NumberDecoder {@template T; @extends BaseDecoder<T>}
+  max(mixed $n, ?string $message = null): static
+  min(mixed $n, ?string $message = null): static
+  negative(?string $message = null): static
+  nonNegative(?string $message = null): static
+  nonPositive(?string $message = null): static
+  positive(?string $message = null): static
+  range(mixed $min, mixed $max, ?string $message = null): static
+
+final class Raoh\Builtin\ObjectDecoder uses Raoh\DecoderTrait {@implements Decoder<mixed, list<mixed>>}
+  __construct(Raoh\Decoder ...$fields): mixed {@param Decoder<mixed, mixed> ...$fields}
+  decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
+  strict(): Raoh\Decoder {@return Decoder<mixed, list<mixed>>}
+
+final class Raoh\Builtin\StringDecoder {@extends BaseDecoder<string>}
+  cuid(?string $message = null): static
+  date(?string $message = null): Raoh\Builtin\TemporalDecoder {@return TemporalDecoder<LocalDate>}
+  dateTime(?string $message = null): Raoh\Builtin\TemporalDecoder {@return TemporalDecoder<LocalDateTime>}
+  email(?string $message = null): static
+  endsWith(string $suffix, ?string $message = null): static
+  fixedLength(int $n, ?string $message = null): static
+  includes(string $substring, ?string $message = null): static
+  ip(?string $message = null): static
+  ipv4(?string $message = null): static
+  ipv6(?string $message = null): static
+  iso8601(?string $message = null): Raoh\Builtin\TemporalDecoder {@return TemporalDecoder<Instant>}
+  maxLength(int $n, ?string $message = null): static
+  minLength(int $n, ?string $message = null): static
+  nonBlank(?string $message = null): static
+  normalize(string $form = 'NFC'): static
+  offsetDateTime(?string $message = null): Raoh\Builtin\TemporalDecoder {@return TemporalDecoder<OffsetDateTime>}
+  oneOf(array $allowed, ?string $message = null): static {@param list<string> $allowed}
+  pattern(string $regex, ?string $message = null): static
+  startsWith(string $prefix, ?string $message = null): static
+  time(?string $message = null): Raoh\Builtin\TemporalDecoder {@return TemporalDecoder<LocalTime>}
+  toBool(?string $message = null): Raoh\Builtin\BoolDecoder
+  toDecimal(?string $message = null): Raoh\Builtin\DecimalDecoder
+  toInt(?string $message = null): Raoh\Builtin\IntDecoder
+  toLong(?string $message = null): Raoh\Builtin\LongDecoder
+  toLowerCase(): static
+  toUpperCase(): static
+  trim(): static
+  ulid(?string $message = null): static
+  uri(?string $message = null): static
+  url(?string $message = null): static
+  uuid(?string $message = null): static
+
+final class Raoh\Builtin\TemporalDecoder {@template T of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant; @extends BaseDecoder<T>}
+  after(object|string $bound, ?string $message = null): static {@param T|string $bound}
+  before(object|string $bound, ?string $message = null): static {@param T|string $bound}
+  between(object|string $from, object|string $to, ?string $message = null): static {@param T|string $from; @param T|string $to}
+  over(Closure $run, callable $parse, string $type): Raoh\Builtin\TemporalDecoder static {@template U of LocalDate|LocalTime|LocalDateTime|OffsetDateTime|Instant; @param \Closure(mixed, Path): Result<U> $run; @param callable(string): (U|null) $parse reads a bound written as text; @param class-string<U> $type the class of the values, which a bound has to be; @return self<U>}
+
+final class Raoh\CallableDecoder uses Raoh\DecoderTrait {@template I; @template T; @implements Decoder<I, T>}
+  decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
+  of(callable $fn): Raoh\CallableDecoder static
+
+final class Raoh\CallableEncoder {@template T; @template O; @implements Encoder<T, O>}
+  andThen(Raoh\Encoder $next): Raoh\Encoder {@template P; @param Encoder<O, P> $next; @return Encoder<T, P>}
+  contramap(callable $f): Raoh\Encoder {@template S; @param callable(S): T $f; @return Encoder<S, O>}
+  encode(mixed $value): mixed
+  of(callable $fn): Raoh\CallableEncoder static
+
+final class Raoh\Combinator\Combiner
+  __construct(array $decoders): mixed {@param list<Decoder<mixed, mixed>> $decoders}
+  flatMap(callable $f): Raoh\Decoder {@param callable $f; @return Decoder<mixed, mixed>}
+  map(callable $f): Raoh\Decoder {@param callable $f; @return Decoder<mixed, mixed>}
+  strict(callable $f): Raoh\Decoder {@param callable $f; @return Decoder<mixed, mixed>}
+
+interface Raoh\Decoder {@template I; @template T}
+  decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result {@param I $in; @return Result<T>}
+
+trait Raoh\DecoderTrait {@template I; @template T}
+  asList(): Raoh\Decoder {@return Decoder<mixed, list<T>>}
+  flatMap(callable $f): Raoh\Decoder {@template U; @param callable(T): Result<U> $f; @return Decoder<I, U>}
+  map(callable $f): Raoh\Decoder {@template U; @param callable(T): U $f; @return Decoder<I, U>}
+  nullable(): Raoh\Decoder {@return Decoder<I, T|null>}
+  pipe(Raoh\Decoder $next): Raoh\Decoder {@template U; @param Decoder<T, U> $next; @return Decoder<I, U>}
+  recover(mixed $fallback): Raoh\Decoder {@param T $fallback; @return Decoder<I, T>}
+  recoverWith(callable $recovery): Raoh\Decoder {@param callable(Issues): T $recovery; @return Decoder<I, T>}
+  refine(callable $predicate, string $code, string $message, Closure|array $meta = [], ?string $messageKey = null): Raoh\Decoder {@param callable(T): bool $predicate; @param array<string, mixed>|\Closure(T): array<string, mixed> $meta; @return Decoder<I, T>}
+  withDefault(mixed $fallback): Raoh\Decoder {@param T $fallback; @return Decoder<I, T>}
+
+final class Raoh\Decoders
+  bool_(): Raoh\Builtin\BoolDecoder static
+  combine(Raoh\Decoder ...$decoders): Raoh\Combinator\Combiner static {@param Decoder<mixed, mixed> ...$decoders}
+  decimal(): Raoh\Builtin\DecimalDecoder static
+  dict(Raoh\Decoder $value): Raoh\Builtin\DictDecoder static {@template V; @param Decoder<mixed, V> $value; @return DictDecoder<V>}
+  discriminate(string $field, array $variants): Raoh\Decoder static {@param array<string, Decoder<mixed, mixed>> $variants; @return Decoder<mixed, mixed>}
+  discriminateBy(string $field, Raoh\Decoder $tag, array $variants): Raoh\Decoder static {@param Decoder<mixed, string> $tag; @param array<string, Decoder<mixed, mixed>> $variants; @return Decoder<mixed, mixed>}
+  double(): Raoh\Builtin\DoubleDecoder static
+  enumOf(array|string $symbols, ?Raoh\Builtin\StringDecoder $string = null, ?string $message = null): Raoh\Decoder static {@param list<string>|class-string<\UnitEnum> $symbols; @return Decoder<mixed, mixed>}
+  field(string $name, Raoh\Decoder $decoder): Raoh\Field\Field static {@template T; @param Decoder<mixed, T> $decoder; @return Field<T>}
+  float_(): Raoh\Builtin\FloatDecoder static
+  int_(): Raoh\Builtin\IntDecoder static
+  lazy(callable $supplier): Raoh\Decoder static {@template I; @template T; @param callable(): Decoder<I, T> $supplier; @return Decoder<I, T>}
+  list_(Raoh\Decoder $element): Raoh\Builtin\ListDecoder static {@template E; @param Decoder<mixed, E> $element; @return ListDecoder<E>}
+  literal(string $literal, ?Raoh\Builtin\StringDecoder $string = null, ?string $message = null): Raoh\Decoder static {@return Decoder<mixed, string>}
+  long(): Raoh\Builtin\LongDecoder static
+  nullable(Raoh\Decoder $dec): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T|null>}
+  object(Raoh\Decoder ...$fields): Raoh\Builtin\ObjectDecoder static {@param Decoder<mixed, mixed> ...$fields}
+  oneOf(Raoh\Decoder ...$candidates): Raoh\Decoder static {@template T; @param Decoder<mixed, T> ...$candidates; @return Decoder<mixed, T>}
+  optionalField(string $name, Raoh\Decoder $decoder): Raoh\Field\OptionalField static {@template T; @param Decoder<mixed, T> $decoder; @return OptionalField<T>}
+  optionalNullableField(string $name, Raoh\Decoder $decoder): Raoh\Field\OptionalNullableField static {@template T; @param Decoder<mixed, T> $decoder; @return OptionalNullableField<T>}
+  recover(Raoh\Decoder $dec, mixed $fallback): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @param T $fallback; @return Decoder<mixed, T>}
+  recoverWith(Raoh\Decoder $dec, callable $recovery): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @param callable(Issues): T $recovery; @return Decoder<mixed, T>}
+  strict(Raoh\Decoder $dec, array $knownFields): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @param list<string> $knownFields; @return Decoder<mixed, T>}
+  strictObject(Raoh\FieldDecoder ...$fields): Raoh\Decoder static {@param FieldDecoder<mixed, mixed> ...$fields; @return Decoder<mixed, list<mixed>>}
+  string_(): Raoh\Builtin\StringDecoder static
+  withDefault(Raoh\Decoder $dec, mixed $fallback): Raoh\Decoder static {@template T; @param Decoder<mixed, T> $dec; @param T $fallback; @return Decoder<mixed, T>}
+
+interface Raoh\Encoder {@template T; @template O}
+  andThen(Raoh\Encoder $next): Raoh\Encoder {@template P; @param Encoder<O, P> $next; @return Encoder<T, P>}
+  contramap(callable $f): Raoh\Encoder {@template S; @param callable(S): T $f; @return Encoder<S, O>}
+  encode(mixed $value): mixed {@param T $value; @return O}
+
+final class Raoh\Err {@template-covariant T; @extends Result<T>}
+  $issues: Raoh\Issues
+  __construct(Raoh\Issues $issues): mixed
+  __toString(): string
+
+enum Raoh\ErrorCodes
+  case Blank = 'blank'
+  case DuplicateElement = 'duplicate_element'
+  case InvalidFormat = 'invalid_format'
+  case InvalidLength = 'invalid_length'
+  case InvalidScale = 'invalid_scale'
+  case InvalidSize = 'invalid_size'
+  case InvalidValue = 'invalid_value'
+  case MissingElement = 'missing_element'
+  case MissingElements = 'missing_elements'
+  case MissingField = 'missing_field'
+  case NotAllowed = 'not_allowed'
+  case NotMultipleOf = 'not_multiple_of'
+  case OneOfFailed = 'one_of_failed'
+  case OutOfRange = 'out_of_range'
+  case Required = 'required'
+  case TooBig = 'too_big'
+  case TooLong = 'too_long'
+  case TooShort = 'too_short'
+  case TooSmall = 'too_small'
+  case TypeMismatch = 'type_mismatch'
+  case UnknownField = 'unknown_field'
+
+interface Raoh\FieldDecoder {@template I; @template T; @extends Decoder<I, T>}
+  fieldName(): string
+
+final class Raoh\Field\Field uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, T>}
+  __construct(string $name, Raoh\Decoder $decoder): mixed {@param Decoder<mixed, T> $decoder}
+  decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
+  fieldName(): string
+
+final class Raoh\Field\OptionalField uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, T|null>}
+  __construct(string $name, Raoh\Decoder $decoder): mixed {@param Decoder<mixed, T> $decoder}
+  decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
+  fieldName(): string
+
+final class Raoh\Field\OptionalNullableField uses Raoh\DecoderTrait {@template T; @implements FieldDecoder<mixed, Absent|PresentNull|Present<T>>}
+  __construct(string $name, Raoh\Decoder $decoder): mixed {@param Decoder<mixed, T> $decoder}
+  decode(mixed $in, ?Raoh\Path $path = null): Raoh\Result
+  fieldName(): string
+
+final class Raoh\Input\Json
+  parse(string $text, int $maxDepth = 512): mixed static
+
+final class Raoh\Input\JsonNumber
+  $lexeme: string
+  __construct(string $lexeme): mixed
+  __toString(): string
+
+final class Raoh\Input\JsonObject
+  __construct(iterable $members = []): mixed {@param iterable<string|int, mixed> $members}
+  count(): int
+  get(string $name): mixed
+  has(string $name): bool
+  members(): Generator {@return \Generator<string, mixed>}
+  names(): array {@return list<string>}
+
+final class Raoh\Issue
+  $code: string
+  $customMessage: bool
+  $message: string
+  $messageKey: string
+  $meta: array
+  $path: Raoh\Path
+  __construct(Raoh\Path $path, string $code, string $message, array $meta = [], bool $customMessage = false, ?string $messageKey = null): mixed {@param array<string, mixed> $meta}
+  custom(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<string, mixed> $meta}
+  derived(Raoh\Path $path, string $messageKey, array $meta = [], ?string $message = null): Raoh\Issue static {@param array<string, mixed> $meta}
+  of(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Issue static {@param array<string, mixed> $meta}
+  rebase(Raoh\Path $prefix): Raoh\Issue
+  resolve(callable $resolver): Raoh\Issue {@param callable(string, array<string, mixed>): ?string $resolver}
+  withCustomMessage(string $message): Raoh\Issue
+
+final class Raoh\Issues
+  add(Raoh\Issue $issue): Raoh\Issues
+  empty(): Raoh\Issues static
+  flatten(): array {@return array<string, list<string>>}
+  format(): array {@return array<string, mixed>}
+  isEmpty(): bool
+  merge(Raoh\Issues $other): Raoh\Issues
+  of(array $items): Raoh\Issues static {@param list<Issue> $items}
+  rebase(Raoh\Path $prefix): Raoh\Issues
+  resolve(callable $resolver): Raoh\Issues
+  toArray(): array {@return list<Issue>}
+  toJsonList(): array {@return list<array{path: string, code: string, message: string, meta: array<string, mixed>}>}
+
+enum Raoh\MessageKeys
+  case InvalidFormatCuid = 'invalid_format.cuid'
+  case InvalidFormatDate = 'invalid_format.date'
+  case InvalidFormatDateTime = 'invalid_format.date_time'
+  case InvalidFormatEmail = 'invalid_format.email'
+  case InvalidFormatEndsWith = 'invalid_format.ends_with'
+  case InvalidFormatEnum = 'invalid_format.enum'
+  case InvalidFormatIncludes = 'invalid_format.includes'
+  case InvalidFormatInstant = 'invalid_format.instant'
+  case InvalidFormatIp = 'invalid_format.ip'
+  case InvalidFormatIpv4 = 'invalid_format.ipv4'
+  case InvalidFormatIpv6 = 'invalid_format.ipv6'
+  case InvalidFormatJson = 'invalid_format.json'
+  case InvalidFormatLiteral = 'invalid_format.literal'
+  case InvalidFormatOffsetDateTime = 'invalid_format.offset_date_time'
+  case InvalidFormatStartsWith = 'invalid_format.starts_with'
+  case InvalidFormatTime = 'invalid_format.time'
+  case InvalidFormatUlid = 'invalid_format.ulid'
+  case InvalidFormatUri = 'invalid_format.uri'
+  case InvalidFormatUrl = 'invalid_format.url'
+  case InvalidFormatUuid = 'invalid_format.uuid'
+  case OutOfRangeAfter = 'out_of_range.after'
+  case OutOfRangeBefore = 'out_of_range.before'
+  case OutOfRangeBetween = 'out_of_range.between'
+  case OutOfRangeMaximum = 'out_of_range.maximum'
+  case OutOfRangeMinimum = 'out_of_range.minimum'
+  case OutOfRangeNegative = 'out_of_range.negative'
+  case OutOfRangeNonNegative = 'out_of_range.non_negative'
+  case OutOfRangeNonPositive = 'out_of_range.non_positive'
+  case OutOfRangePositive = 'out_of_range.positive'
+  case OutOfRangeRange = 'out_of_range.range'
+  case TooSmallNonempty = 'too_small.nonempty'
+  case TypeMismatchNumericRange = 'type_mismatch.numeric_range'
+  case TypeMismatchStringKeys = 'type_mismatch.string_keys'
+
+final class Raoh\Messages
+  __invoke(string $key, array $meta): ?string {@param array<string, mixed> $meta}
+  english(): Raoh\Messages static
+  format(string $messageKey, string $code, array $meta): ?string {@param array<string, mixed> $meta}
+  fromProperties(string $text): Raoh\Messages static
+  japanese(): Raoh\Messages static
+  templates(): array {@return array<string, string>}
+  with(array $templates): Raoh\Messages {@param array<string, string> $templates}
+
+final class Raoh\Ok {@template-covariant T; @extends Result<T>}
+  $value: mixed
+  __construct(mixed $value): mixed {@param T $value}
+  __toString(): string
+
+final class Raoh\Path
+  __toString(): string
+  append(string $segment): Raoh\Path
+  appendPath(Raoh\Path $other): Raoh\Path
+  of(string $first, string ...$rest): Raoh\Path static
+  root(): Raoh\Path static
+  segments(): array {@return list<string>}
+  toJsonPointer(): string
+
+abstract class Raoh\Presence
+
+final class Raoh\Present {@template T}
+  $value: mixed
+  __construct(mixed $value): mixed {@param T $value}
+
+final class Raoh\PresentNull
+  __construct(): mixed
+
+abstract class Raoh\Result {@template-covariant T}
+  err(Raoh\Issues $issues): Raoh\Err static {@return Err<never>}
+  fail(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
+  failAtRoot(string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
+  failCustom(Raoh\Path $path, string $code, string $message, array $meta = [], ?string $messageKey = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
+  failWith(Raoh\Path $path, string $code, string $messageKey, ?string $message, string $defaultMessage, array $meta = []): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
+  flatMap(callable $f): Raoh\Result {@template U; @param callable(T): Result<U> $f; @return Result<U>}
+  fold(callable $onOk, callable $onErr): mixed {@template R; @param callable(T): R $onOk; @param callable(Issues): R $onErr; @return R}
+  getOrThrow(): mixed {@return T}
+  isErr(): bool
+  isOk(): bool
+  issue(Raoh\Path $path, string $messageKey, array $meta = [], ?string $message = null): Raoh\Err static {@return Err<never>; @param array<string, mixed> $meta}
+  map(callable $f): Raoh\Result {@template U; @param callable(T): U $f; @return Result<U>}
+  map2(Raoh\Result $ra, Raoh\Result $rb, callable $f): Raoh\Result static {@template A; @template B; @template C; @param Result<A> $ra; @param Result<B> $rb; @param callable(A, B): C $f; @return Result<C>}
+  ok(mixed $value): Raoh\Ok static {@template U; @param U $value; @return Ok<U>}
+  orElseThrow(callable $mapper): mixed {@param callable(Issues): \Throwable $mapper; @return T}
+  traverse(array $items, callable $f, ?Raoh\Path $basePath = null): Raoh\Result static {@template I; @template U; @param list<I> $items; @param callable(I, Path): Result<U> $f; @return Result<list<U>>}
+
+trait Raoh\StaticConstructor
+  of(mixed ...$args): static static
+
+final class Raoh\Value\Decimal
+  __toString(): string
+  coefficient(): string
+  compareTo(Raoh\Value\Decimal $other): int
+  equals(Raoh\Value\Decimal $other): bool
+  fromLexeme(string $jsonNumber): ?Raoh\Value\Decimal static
+  isMultipleOf(Raoh\Value\Decimal $divisor): bool
+  of(string $coefficient, int $scale): Raoh\Value\Decimal static
+  parse(string $text): ?Raoh\Value\Decimal static
+  scale(): int
+  signum(): int
+
+final class Raoh\Value\Float32
+  $value: float
+  __construct(float $value): mixed
+  __toString(): string
+  equals(Raoh\Value\Float32 $other): bool
+  fromLexeme(string $lexeme): Raoh\Value\Float32 static
+
+final class Raoh\Value\Temporal\Instant
+  __toString(): string
+  compareTo(Raoh\Value\Temporal\Instant $other): int
+  epochSecond(): int
+  equals(Raoh\Value\Temporal\Instant $other): bool
+  nano(): int
+  parse(string $text): ?Raoh\Value\Temporal\Instant static
+  toDateTimeImmutable(): DateTimeImmutable
+
+final class Raoh\Value\Temporal\LocalDate
+  __toString(): string
+  compareTo(Raoh\Value\Temporal\LocalDate $other): int
+  day(): int
+  equals(Raoh\Value\Temporal\LocalDate $other): bool
+  month(): int
+  parse(string $text): ?Raoh\Value\Temporal\LocalDate static
+  toDateTimeImmutable(): DateTimeImmutable
+  year(): int
+
+final class Raoh\Value\Temporal\LocalDateTime
+  __toString(): string
+  compareTo(Raoh\Value\Temporal\LocalDateTime $other): int
+  date(): Raoh\Value\Temporal\LocalDate
+  day(): int
+  equals(Raoh\Value\Temporal\LocalDateTime $other): bool
+  hour(): int
+  minute(): int
+  month(): int
+  nano(): int
+  parse(string $text): ?Raoh\Value\Temporal\LocalDateTime static
+  second(): int
+  time(): Raoh\Value\Temporal\LocalTime
+  toDateTimeImmutable(): DateTimeImmutable
+  year(): int
+
+final class Raoh\Value\Temporal\LocalTime
+  __toString(): string
+  compareTo(Raoh\Value\Temporal\LocalTime $other): int
+  equals(Raoh\Value\Temporal\LocalTime $other): bool
+  hour(): int
+  minute(): int
+  nano(): int
+  parse(string $text): ?Raoh\Value\Temporal\LocalTime static
+  second(): int
+  secondOfDay(): int
+
+final class Raoh\Value\Temporal\OffsetDateTime
+  __toString(): string
+  compareTo(Raoh\Value\Temporal\OffsetDateTime $other): int
+  date(): Raoh\Value\Temporal\LocalDate
+  dateTime(): Raoh\Value\Temporal\LocalDateTime
+  day(): int
+  epochSecond(): int
+  equals(Raoh\Value\Temporal\OffsetDateTime $other): bool
+  hour(): int
+  minute(): int
+  month(): int
+  nano(): int
+  offsetSeconds(): int
+  parse(string $text): ?Raoh\Value\Temporal\OffsetDateTime static
+  second(): int
+  time(): Raoh\Value\Temporal\LocalTime
+  toDateTimeImmutable(): DateTimeImmutable
+  year(): int
+
+function Raoh\Boundary\Array_\Encode\bool_(): Raoh\Encoder {@return Encoder<bool, bool>}
+function Raoh\Boundary\Array_\Encode\date_(): Raoh\Encoder {@return Encoder<\DateTimeInterface, string>}
+function Raoh\Boundary\Array_\Encode\date_time_(): Raoh\Encoder {@return Encoder<\DateTimeInterface, string>}
+function Raoh\Boundary\Array_\Encode\enum_of(): Raoh\Encoder {@return Encoder<\UnitEnum, string|int>}
+function Raoh\Boundary\Array_\Encode\float_(): Raoh\Encoder {@return Encoder<float, float>}
+function Raoh\Boundary\Array_\Encode\int_(): Raoh\Encoder {@return Encoder<int, int>}
+function Raoh\Boundary\Array_\Encode\list_(Raoh\Encoder $enc): Raoh\Encoder {@template T; @param Encoder<T, mixed> $enc; @return Encoder<list<T>, list<mixed>>}
+function Raoh\Boundary\Array_\Encode\nested(Raoh\Encoder $enc): Raoh\Encoder {@param Encoder<mixed, array<string, mixed>> $enc; @return Encoder<mixed, array<string, mixed>>}
+function Raoh\Boundary\Array_\Encode\nullable(Raoh\Encoder $enc): Raoh\Encoder {@template T; @param Encoder<T, mixed> $enc; @return Encoder<T|null, mixed>}
+function Raoh\Boundary\Array_\Encode\object_(Raoh\Boundary\Array_\Encode\PropertyEncoder ...$props): Raoh\Encoder {@template T; @param PropertyEncoder<T> ...$props; @return Encoder<T, array<string, mixed>>}
+function Raoh\Boundary\Array_\Encode\property(string $key, callable $getter, Raoh\Encoder $enc): Raoh\Boundary\Array_\Encode\PropertyEncoder {@template T; @param callable(T): mixed $getter; @param Encoder<mixed, mixed> $enc; @return PropertyEncoder<T>}
+function Raoh\Boundary\Array_\Encode\string_(): Raoh\Encoder {@return Encoder<string, string>}
+function Raoh\Boundary\Array_\Encode\with_default(Raoh\Encoder $enc, mixed $default): Raoh\Encoder {@template T; @param Encoder<T, mixed> $enc; @param T $default; @return Encoder<T|null, mixed>}
+function Raoh\Boundary\Array_\bool_(): Raoh\Builtin\BoolDecoder
+function Raoh\Boundary\Array_\bytes(): Raoh\Decoder {@return Decoder<mixed, string>}
+function Raoh\Boundary\Array_\combine(Raoh\Decoder ...$decoders): Raoh\Combinator\Combiner {@param Decoder<mixed, mixed> ...$decoders}
+function Raoh\Boundary\Array_\decimal(): Raoh\Builtin\DecimalDecoder
+function Raoh\Boundary\Array_\dict(Raoh\Decoder $dec): Raoh\Builtin\DictDecoder {@template T; @param Decoder<mixed, T> $dec; @return DictDecoder<T>}
+function Raoh\Boundary\Array_\discriminate(string $field, array $variants): Raoh\Decoder {@param array<string, Decoder<mixed, mixed>> $variants; @return Decoder<mixed, mixed>}
+function Raoh\Boundary\Array_\discriminate_by(string $field, Raoh\Decoder $tag, array $variants): Raoh\Decoder {@param Decoder<mixed, string> $tag; @param array<string, Decoder<mixed, mixed>> $variants; @return Decoder<mixed, mixed>}
+function Raoh\Boundary\Array_\double(): Raoh\Builtin\DoubleDecoder
+function Raoh\Boundary\Array_\enum_of(array|string $symbols, ?Raoh\Builtin\StringDecoder $string = null, ?string $message = null): Raoh\Decoder {@param list<string>|class-string<\UnitEnum> $symbols; @return Decoder<mixed, mixed>}
+function Raoh\Boundary\Array_\field(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, T>}
+function Raoh\Boundary\Array_\float_(): Raoh\Builtin\FloatDecoder
+function Raoh\Boundary\Array_\int_(): Raoh\Builtin\IntDecoder
+function Raoh\Boundary\Array_\list_of(Raoh\Decoder $dec): Raoh\Builtin\ListDecoder {@template T; @param Decoder<mixed, T> $dec; @return ListDecoder<T>}
+function Raoh\Boundary\Array_\literal(string $expected, ?Raoh\Builtin\StringDecoder $string = null, ?string $message = null): Raoh\Decoder {@return Decoder<mixed, string>}
+function Raoh\Boundary\Array_\long(): Raoh\Builtin\LongDecoder
+function Raoh\Boundary\Array_\nested(Raoh\Decoder $dec): Raoh\Decoder {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T>}
+function Raoh\Boundary\Array_\nullable(Raoh\Decoder $dec): Raoh\Decoder {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T|null>}
+function Raoh\Boundary\Array_\object(Raoh\Decoder ...$fields): Raoh\Builtin\ObjectDecoder {@param Decoder<mixed, mixed> ...$fields}
+function Raoh\Boundary\Array_\one_of(Raoh\Decoder ...$candidates): Raoh\Decoder {@template T; @param Decoder<mixed, T> ...$candidates; @return Decoder<mixed, T>}
+function Raoh\Boundary\Array_\optional_field(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, T|null>}
+function Raoh\Boundary\Array_\optional_nullable_field(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, \Raoh\Absent|\Raoh\PresentNull|\Raoh\Present<T>>}
+function Raoh\Boundary\Array_\strict(Raoh\Decoder $dec, array $knownFields): Raoh\Decoder {@template T; @param Decoder<mixed, T> $dec; @param list<string> $knownFields; @return Decoder<mixed, T>}
+function Raoh\Boundary\Array_\strict_object(Raoh\FieldDecoder ...$fields): Raoh\Decoder {@param FieldDecoder<mixed, mixed> ...$fields; @return Decoder<mixed, list<mixed>>}
+function Raoh\Boundary\Array_\string_(): Raoh\Builtin\StringDecoder
+function Raoh\Boundary\Json\Encode\to_json(Raoh\Encoder $enc): Raoh\Encoder {@param Encoder<mixed, array<mixed>> $enc; @return Encoder<mixed, string>}
+function Raoh\Boundary\Json\bool_(): Raoh\Builtin\BoolDecoder {@return BoolDecoder}
+function Raoh\Boundary\Json\combine(Raoh\Decoder ...$decoders): Raoh\Combinator\Combiner {@param Decoder<mixed, mixed> ...$decoders}
+function Raoh\Boundary\Json\field(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, T>}
+function Raoh\Boundary\Json\float_(): Raoh\Builtin\FloatDecoder {@return FloatDecoder}
+function Raoh\Boundary\Json\from_json(Raoh\Decoder $dec, int $depth = 512): Raoh\Decoder {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T>}
+function Raoh\Boundary\Json\int_(): Raoh\Builtin\IntDecoder {@return IntDecoder}
+function Raoh\Boundary\Json\list_of(Raoh\Decoder $dec): Raoh\Decoder {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, list<T>>}
+function Raoh\Boundary\Json\nested(Raoh\Decoder $dec): Raoh\Decoder {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T>}
+function Raoh\Boundary\Json\nullable(Raoh\Decoder $dec): Raoh\Decoder {@template T; @param Decoder<mixed, T> $dec; @return Decoder<mixed, T|null>}
+function Raoh\Boundary\Json\optional_field(string $name, Raoh\Decoder $dec): Raoh\FieldDecoder {@template T; @param Decoder<mixed, T> $dec; @return FieldDecoder<mixed, T|null>}
+function Raoh\Boundary\Json\string_(): Raoh\Builtin\StringDecoder {@return StringDecoder}

@@ -82,6 +82,14 @@ jobs:
           RAOH_SPECIFICATION_DIR: conformance/target/raoh-specification
           RAOH_REQUIRE_SPECIFICATION: '1'
         run: vendor/bin/phpunit
+      # What PHP prints a float with follows serialize_precision and precision. raoh-php reads and
+      # writes floats by the specification's algorithm and asks neither, which this run holds it
+      # to: 17 is the serialize_precision of PHP before 7.1, which php.ini files still set.
+      - name: Test under other float settings
+        env:
+          RAOH_SPECIFICATION_DIR: conformance/target/raoh-specification
+          RAOH_REQUIRE_SPECIFICATION: '1'
+        run: php -d serialize_precision=17 -d precision=3 vendor/bin/phpunit
 
   # The cases of the Raoh Specification at the commit conformance/spec.lock pins, run on this
   # library and checked by that commit's raoh-verify against conformance/conformance.json.

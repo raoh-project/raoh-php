@@ -93,15 +93,18 @@ final class ListDecoder extends BaseDecoder
         if ($elements === []) {
             throw new \InvalidArgumentException('containsAll: the elements must not be empty');
         }
-        return $this->then(static function (array $v, Path $p) use ($elements, $message): Result {
+        $keys = array_map(Values::key(...), $elements);
+        return $this->then(static function (array $v, Path $p) use ($elements, $keys, $message): Result {
             $present = [];
             foreach ($v as $e) {
                 $present[Values::key($e)] = true;
             }
-            $missing = array_values(array_filter(
-                $elements,
-                static fn (mixed $e): bool => !isset($present[Values::key($e)]),
-            ));
+            $missing = [];
+            foreach ($elements as $i => $e) {
+                if (!isset($present[$keys[$i]])) {
+                    $missing[] = $e;
+                }
+            }
             return $missing === []
                 ? Result::ok($v)
                 : Result::issue($p, 'missing_elements', ['expected' => $elements, 'missing' => $missing], $message);

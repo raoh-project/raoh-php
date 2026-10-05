@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Raoh\Input;
 
+use Raoh\Notation199x\ScalarValues;
+
 /**
  * An object of the input model: members in the order they were written, no name twice.
  *
@@ -18,12 +20,17 @@ final class JsonObject implements \Countable
 
     /**
      * @param iterable<string|int, mixed> $members
+     * @throws \InvalidArgumentException when a name is not UTF-8, which no member of the input model has
      */
     public function __construct(iterable $members = [])
     {
         $this->members = [];
         foreach ($members as $name => $value) {
-            $this->members[(string) $name] = $value;
+            $name = (string) $name;
+            if (ScalarValues::invalidUtf8At($name) !== null) {
+                throw new \InvalidArgumentException('a member name is not UTF-8');
+            }
+            $this->members[$name] = $value;
         }
     }
 

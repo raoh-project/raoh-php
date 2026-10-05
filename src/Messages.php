@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Raoh;
 
 use Raoh\Internal\MessageForm;
+use Raoh\Internal\Text;
 
 /**
  * A message catalogue: a template for each message key, which an issue's metadata fills in.
@@ -124,30 +125,28 @@ final class Messages
 
     private static function unescape(string $s): string
     {
-        // A character past the basic plane is written as the \\u escapes of its two surrogates,
-        // as Java writes a properties file; they are read as the one character they encode.
-        return preg_replace_callback(
-            '/\\\\(u[dD][89abAB][0-9A-Fa-f]{2}\\\\u[dD][c-fC-F][0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|.)/s',
-            static function (array $m): string {
-                $e = $m[1];
-                // uXXXX\uYYYY: the two surrogates of one character.
-                if (strlen($e) === 11) {
-                    $high = (int) hexdec(substr($e, 1, 4));
-                    $low = (int) hexdec(substr($e, 7, 4));
-                    return MessageForm::utf8(0x10000 + (($high - 0xD800) << 10) + ($low - 0xDC00));
-                }
-                if ($e[0] === 'u' && strlen($e) === 5) {
-                    return MessageForm::utf8((int) hexdec(substr($e, 1)));
-                }
-                return match ($e) {
-                    't' => "\t",
-                    'n' => "\n",
-                    'r' => "\r",
-                    'f' => "\f",
-                    default => $e,
-                };
-            },
-            $s,
-        ) ?? $s;
+        $out = '';
+        $at = 0;
+        $n = strlen($s);
+        while (($slash = strpos($s, '\\', $at)) !== false) {
+            $out .= substr($s, $at, $slash - $at);
+            $e = $s[$slash + 1] ?? '';
+            if ($e === 'u') {
+                $read = Text::unicodeEscape($s, $slash)
+                    ?? throw new \InvalidArgumentException('a \\u escape of no character at byte ' . $slash);
+                $out .= $read[0];
+                $at = $read[1];
+                continue;
+            }
+            $out .= match ($e) {
+                't' => "\t",
+                'n' => "\n",
+                'r' => "\r",
+                'f' => "\f",
+                default => $e,
+            };
+            $at = min($slash + 2, $n);
+        }
+        return $out . substr($s, $at);
     }
 }

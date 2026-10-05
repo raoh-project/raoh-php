@@ -21,7 +21,6 @@ use Raoh\Field\OptionalField;
 use Raoh\Field\OptionalNullableField;
 use Raoh\Internal\Input;
 use Raoh\Internal\Number\Floats;
-use Raoh\Notation199x\ScalarValues;
 use Raoh\Value\Decimal;
 use Raoh\Value\Float32;
 
@@ -44,14 +43,8 @@ final class Decoders
     public static function string_(): StringDecoder
     {
         return new StringDecoder(static function (mixed $in, Path $p): Result {
-            if (!is_string($in)) {
-                return self::mismatch($in, $p, 'string');
-            }
-            if (ScalarValues::invalidUtf8At($in) !== null) {
-                // Not text, which the input model has no place for: a PHP string of other bytes.
-                return Result::issue($p, 'invalid_format.utf8');
-            }
-            return Result::ok($in);
+            $text = Input::text($in);
+            return $text === null ? self::mismatch($in, $p, 'string') : Result::ok($text);
         });
     }
 
@@ -222,13 +215,19 @@ final class Decoders
      * discarded when there is an unknown member.
      *
      * @template T
-     * @param Decoder<mixed, T> $inner
-     * @param list<string> $known
+     * @param Decoder<mixed, T> $dec
+     * @param list<string> $knownFields
      * @return Decoder<mixed, T>
      */
-    public static function strict(Decoder $inner, array $known): Decoder
+    public static function strict(Decoder $dec, array $knownFields): Decoder
     {
-        $knownSet = array_flip($known);
+        foreach ($knownFields as $name) {
+            if (!is_string($name)) {
+                throw new \InvalidArgumentException('strict: a known field is a string, not ' . get_debug_type($name));
+            }
+        }
+        $inner = $dec;
+        $knownSet = array_flip($knownFields);
         return CallableDecoder::of(static function (mixed $in, ?Path $path = null) use ($inner, $knownSet): Result {
             $p = $path ?? Path::root();
             $result = $inner->decode($in, $p);
@@ -277,13 +276,18 @@ final class Decoders
      * The default for a null or absent input; anything else goes to the decoder, whose failures
      * are given as they are.
      *
+     * The default is the value itself. A Closure is refused: until 0.9 a callable was called with
+     * the issues, and a Closure kept as the value would be a decoder that silently gives a function.
+     *
      * @template T
      * @param Decoder<mixed, T> $dec
-     * @param T $default
+     * @param T $fallback
      * @return Decoder<mixed, T>
      */
-    public static function withDefault(Decoder $dec, mixed $default): Decoder
+    public static function withDefault(Decoder $dec, mixed $fallback): Decoder
     {
+        self::refuseClosure($fallback, 'withDefault', 'the default value itself');
+        $default = $fallback;
         return CallableDecoder::of(
             static fn (mixed $in, ?Path $path = null): Result => self::isNothing($in)
                 ? Result::ok($default)
@@ -294,6 +298,9 @@ final class Decoders
     /**
      * The fallback in place of any failure.
      *
+     * The fallback is the value itself. A Closure is refused: until 0.9 a callable was called with
+     * the issues, which {@see recoverWith()} does now.
+     *
      * @template T
      * @param Decoder<mixed, T> $dec
      * @param T $fallback
@@ -301,6 +308,7 @@ final class Decoders
      */
     public static function recover(Decoder $dec, mixed $fallback): Decoder
     {
+        self::refuseClosure($fallback, 'recover', 'recoverWith() for a function of the issues');
         return self::recoverWith($dec, static fn (): mixed => $fallback);
     }
 
@@ -446,9 +454,13 @@ final class Decoders
      */
     public static function lazy(callable $supplier): Decoder
     {
-        return CallableDecoder::of(
-            fn (mixed $in, ?Path $path = null) => $supplier()->decode($in, $path),
-        );
+        return CallableDecoder::of(static function (mixed $in, ?Path $path = null) use ($supplier): Result {
+            $dec = $supplier();
+            if (!$dec instanceof Decoder) {
+                throw new \LogicException('lazy: the supplier gave ' . get_debug_type($dec) . ', not a decoder');
+            }
+            return $dec->decode($in, $path);
+        });
     }
 
     /**
@@ -461,13 +473,19 @@ final class Decoders
         if ($variants === []) {
             throw new \InvalidArgumentException('discriminate takes at least one variant');
         }
+        foreach ($variants as $name => $variant) {
+            if (!$variant instanceof Decoder) {
+                throw new \InvalidArgumentException("discriminate: the variant {$name} is not a decoder");
+            }
+        }
         $allowed = array_map('strval', array_keys($variants));
         sort($allowed, SORT_STRING);
         return CallableDecoder::of(static function (mixed $in, ?Path $path = null) use ($field, $tag, $variants, $allowed): Result {
             $p = $path ?? Path::root();
             return $tag->decode($in, $p)->flatMap(
-                static function (string $name) use ($in, $p, $field, $variants, $allowed): Result {
-                    if (!array_key_exists($name, $variants)) {
+                static function (mixed $name) use ($in, $p, $field, $variants, $allowed): Result {
+                    // A tag decoder of discriminateBy may give what is not a string; it names no variant.
+                    if (!is_string($name) || !array_key_exists($name, $variants)) {
                         return Result::issue($p->append($field), 'not_allowed', ['allowed' => $allowed]);
                     }
                     return $variants[$name]->decode($in, $p);
@@ -525,6 +543,13 @@ final class Decoders
             return Result::issue($p, 'required');
         }
         return Result::issue($p, 'type_mismatch', ['expected' => $expected, 'actual' => Input::kind($in)]);
+    }
+
+    private static function refuseClosure(mixed $value, string $form, string $instead): void
+    {
+        if ($value instanceof \Closure) {
+            throw new \InvalidArgumentException("{$form}() takes a value, not a Closure; use {$instead}");
+        }
     }
 
     private static function isNothing(mixed $in): bool

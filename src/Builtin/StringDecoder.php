@@ -85,8 +85,9 @@ final class StringDecoder extends BaseDecoder
     }
 
     /** At least that many Unicode scalar values. */
-    public function minLength(int $min, ?string $message = null): static
+    public function minLength(int $n, ?string $message = null): static
     {
+        $min = $n;
         return $this->then(static function (string $v, Path $p) use ($min, $message): Result {
             $n = ScalarValues::count($v);
             return $n < $min
@@ -96,8 +97,9 @@ final class StringDecoder extends BaseDecoder
     }
 
     /** At most that many Unicode scalar values. */
-    public function maxLength(int $max, ?string $message = null): static
+    public function maxLength(int $n, ?string $message = null): static
     {
+        $max = $n;
         return $this->then(static function (string $v, Path $p) use ($max, $message): Result {
             $n = ScalarValues::count($v);
             return $n > $max
@@ -107,8 +109,9 @@ final class StringDecoder extends BaseDecoder
     }
 
     /** Exactly that many Unicode scalar values. */
-    public function fixedLength(int $length, ?string $message = null): static
+    public function fixedLength(int $n, ?string $message = null): static
     {
+        $length = $n;
         return $this->then(static function (string $v, Path $p) use ($length, $message): Result {
             $n = ScalarValues::count($v);
             return $n !== $length
@@ -124,6 +127,11 @@ final class StringDecoder extends BaseDecoder
      */
     public function oneOf(array $allowed, ?string $message = null): static
     {
+        foreach ($allowed as $a) {
+            if (!is_string($a)) {
+                throw new \InvalidArgumentException('oneOf: an allowed string is a string, not ' . get_debug_type($a));
+            }
+        }
         if (count(array_unique($allowed)) !== count($allowed)) {
             throw new \InvalidArgumentException('oneOf: the allowed strings are not distinct');
         }
@@ -174,8 +182,9 @@ final class StringDecoder extends BaseDecoder
      * pattern language of the specification (spec/pattern.md), not PCRE's; one it refuses, or one
      * past its limits, is refused here with an \InvalidArgumentException.
      */
-    public function pattern(string $pattern, ?string $message = null): static
+    public function pattern(string $regex, ?string $message = null): static
     {
+        $pattern = $regex;
         $read = Pattern::read($pattern);
         if (!$read instanceof Pattern) {
             throw new \InvalidArgumentException("not a pattern: {$pattern}");

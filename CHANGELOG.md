@@ -24,25 +24,48 @@ Follows the [Raoh Specification](https://github.com/raoh-project/raoh-specificat
 
 ### Changed
 
-- `trim()`, `nonBlank()`, `toLowerCase()`, `toUpperCase()` and lengths read text by Unicode 18.0.0 through notation-199x, whatever Unicode version PHP was built with; `minLength()` and the others count Unicode scalar values
+- `trim()`, `nonBlank()`, `toLowerCase()`, `toUpperCase()` and lengths read text by Unicode 18.0.0 through notation-199x, whatever Unicode version PHP was built with; `trim()` removes every White_Space character, not ASCII whitespace alone; `minLength()` and the others count Unicode scalar values
 - `email()`, `ipv4()`, `ipv6()`, `ip()`, `uuid()`, `ulid()` and `url()` follow the definitions of the specification; `uuid()` gives the UUID in lower case, and `url()` no longer checks the port against a range
-- Every issue's message is derived from the English catalogue when it is made, with the message forms of the specification (`must be at least 0.1` for a float32 bound)
-- `field()` gives a member that is not there to its decoder as absent, and gives `type_mismatch` (expected `object`) when the input is not an object; `type_mismatch` carries `actual`, the kind of input found
-- `one_of()` gives `one_of_failed` listing each candidate's issues in `meta.candidates`
-- `withDefault()` gives the default for a null or absent input only; a failure of the inner decoder is given as it is
-- A PHP value the input model has no place for, such as a `DateTime`, an uploaded file left in a request array, or a NaN or infinite float, gives `type_mismatch` whose `actual` names its PHP type (`DateTimeImmutable`, `NAN`); a PHP float is read as its shortest text whatever `serialize_precision` is
+- Decoding never throws: whatever PHP value a decoder is handed, bad input is an issue. A value the input model has no place for, such as a `DateTime`, an uploaded file left in a request array, a resource, a NaN or infinite float, a string that is not UTF-8 or an array with a key that is not UTF-8, gives `type_mismatch` whose `actual` names what was found (`DateTimeImmutable`, `NAN`, `non-UTF-8 string`)
+- A PHP float is read as the canonical decimal of the float64 it is, by the specification's algorithm, whatever `serialize_precision` and `precision` the php.ini sets
+- An argument of the wrong type, such as a non-string allowed value of `string_()->oneOf()`, a variant of `discriminate()` that is not a decoder, or a bound of another temporal type, is refused with an `\InvalidArgumentException` when the decoder is built, not when a value is decoded
+- `asList()` reads an array as `list_of()` does, giving `required` or `type_mismatch` for other input
 - `Issues::toJsonList()` writes a decimal or a temporal value in `meta` as its text, and a float JSON cannot carry as a tag such as `{"float": "-0"}`
+- `ErrorCodes` and `MessageKeys` name every code and message key of the specification's catalogue, and `MessageKeys::InvalidFormatJson` the one raoh-php gives of its own; a test holds them to the catalogue
 
 ### Breaking
 
-- `int_()` decodes int32 and no longer reads numeric strings: `"42"` gives `type_mismatch`; read form data with `string_()->toInt()`
-- `float_()` decodes float32 and gives a `Raoh\Value\Float32`; `double()` gives a PHP float. Neither reads numeric strings
-- `pattern()` takes the pattern language of the specification, matched against the whole string, instead of a PCRE regex with delimiters, and no longer takes a `$code`
-- `enum_of()` matches ASCII case-insensitively and gives `invalid_format.enum`; a string-backed enum is matched by its values, any other enum by its case names; it also takes a list of symbol names
-- `literal()` compares a string and gives `invalid_format.literal`
-- `Decoders::withDefault()` no longer falls back when the inner decoder's issues are all `required`: put it on the field's decoder, `field('a', int_()->withDefault(0))`
-- Removed `StringDecoder::allowBlank()`, `toFloat()` and `toDate($format)` (use `date()`), and `FloatDecoder::scale()` (use `decimal()->scale()`)
+Inputs and values:
+
+- `int_()` decodes int32, and `string_()->toInt()` gives int32 too, with `type_mismatch.numeric_range` outside it; `long()` and `toLong()` give int64. `int_()` no longer reads numeric strings: `"42"` gives `type_mismatch`; read form data with `string_()->toInt()`
+- `float_()` decodes float32 and gives a `Raoh\Value\Float32`, and its bounds are float32; `double()` gives a PHP float. Neither reads numeric strings
+- `string_()` gives `type_mismatch` for a string that is not UTF-8; `bytes()` still reads any PHP string
+- `from_json()` and `JsonDecoders::fromJson()` give their decoder the input model, not what `json_decode` gives: a `JsonObject` for an object, a `JsonNumber` for a number and a list for an array. The decoders of this library read both, but a decoder of your own written to read PHP arrays reads them no longer; its PHPDoc type is `Decoder<mixed, T>` now, not `Decoder<array<string, mixed>, T>`. Text that is not JSON gives `invalid_format.json`, with the parser's `reason` in `meta`, instead of `invalid_format` with the reason in the message
+
+Issues:
+
+- Every message is the catalogue's, so the wording of many changed (`not a valid email address` is `not a valid email`, `expected integer` keeps its words); a message you gave is kept as before
+- `type_mismatch` carries `actual`, the kind of input found as the specification names it (`number`, `string`, `null`, `object`, `missing` ...), instead of PHP's `gettype()` (`integer`, `NULL`, ...)
+- `field()` gives `type_mismatch` (expected `object`) at the member's path when the input is not an object, where it gave `required`; a member that is not there is given to the field's decoder as absent
+- `one_of()` gives one `one_of_failed`, listing each candidate's issues in `meta.candidates`, where it gave the candidates' issues one after another
+- `int_()->oneOf()` gives `not_allowed`, where it gave `invalid_value`; the numeric sign checks give their bound (`min` or `max`) besides `actual`
+
+Combinators:
+
+- `recover()` and `withDefault()` take the value itself and no longer call a callable with the issues: `Decoders::recover($d, fn (Issues $i) => 42)` gave 42 and would now give the closure, so a Closure is refused with an `\InvalidArgumentException`. Use `recoverWith($d, fn (Issues $i) => 42)`
+- `Decoders::withDefault()` gives the default for a null or absent input only, and no longer when the inner decoder's issues are all `required`: put it on the field's decoder, `field('a', int_()->withDefault(0))`
+- `enum_of()` matches ASCII case-insensitively and gives `invalid_format.enum`; a string-backed enum is matched by its values and any other enum by its case names, so an int-backed enum is matched by name and not by its int value; it also takes a list of symbol names
+- `literal()` compares a string, read with a string decoder, and gives `invalid_format.literal`
+- `pattern()` takes the pattern language of the specification, matched against the whole string, instead of a PCRE regex with delimiters: drop the delimiters and the anchors, `pattern('[0-9]{3}-[0-9]{4}')`. It no longer takes a `$code`, so its second argument is the message: `pattern($re, 'my_code')` gives the message `my_code` now
+
+Types and classes:
+
+- The built-in decoders (`StringDecoder`, `IntDecoder`, `FloatDecoder`, `BoolDecoder` and the new ones) are made by `string_()`, `int_()` and the other factories; their constructors take the step that runs, not a `Decoder` to wrap, so `new StringDecoder($decoder)` no longer works. Apply the operations of a decoder of your own with `map()`, `flatMap()` or `pipe()`
+- They are no longer generic over their input: write `StringDecoder`, not `StringDecoder<mixed>`, in PHPDoc
+- Removed `StringDecoder::allowBlank()`, `toFloat()` and `toDate($format)` (use `date()`, which reads ISO 8601), and `FloatDecoder::scale()` (use `decimal()->scale()`)
 - Requires a 64-bit PHP and `raoh/notation-199x`
+
+The public API is recorded in `tests/public-api.txt`, which a test holds the code to, so that a later change to it shows in review beside its entry here.
 
 ### Earlier in this cycle
 

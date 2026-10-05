@@ -34,6 +34,8 @@ composer install
 ./vendor/bin/phpunit
 ```
 
+The tests that run the specification's suite read it from `RAOH_SPECIFICATION_DIR`, or from `raoh-specification` beside this repository, and are skipped where there is none. `tests/public-api.txt` records the public API, and a test fails when the code differs from it: a pull request that changes the API writes it again with `composer public-api`, and says in `CHANGELOG.md` what the change means for code that uses raoh-php.
+
 ## Package Layout
 
 ```
@@ -458,8 +460,8 @@ $err->issues->flatten();
 The `Decoders` class and boundary functions provide reusable combinators.
 
 - `Decoders::lazy(callable $fn)` — for recursive decoders
-- `Decoders::withDefault(Decoder $dec, mixed $default)`, `$dec->withDefault($default)` — the default for a null or absent input
-- `Decoders::recover(Decoder $dec, mixed $fallback)`, `$dec->recover($fallback)` — the fallback for any decoding failure; `recoverWith(fn (Issues $issues) => ...)` computes it
+- `Decoders::withDefault(Decoder $dec, mixed $fallback)`, `$dec->withDefault($fallback)` — the default for a null or absent input; the value itself, so a Closure is refused
+- `Decoders::recover(Decoder $dec, mixed $fallback)`, `$dec->recover($fallback)` — the fallback for any decoding failure, the value itself; `recoverWith(fn (Issues $issues) => ...)` computes it from the issues
 - `Decoders::oneOf(Decoder ...$candidates)` — the first candidate that succeeds; `one_of_failed` with each candidate's issues if all fail
 - `discriminate($field, ['circle' => $circle, 'square' => $square])` — the variant the tag member names; `discriminate_by($field, $tag, $variants)` reads the tag with a decoder of its own
 - `enum_of(['RED', 'GREEN'])` or `enum_of(Color::class)` — one of the symbols, ASCII case-insensitively: a string-backed enum's symbols are its values, any other enum's its case names
@@ -715,7 +717,7 @@ combine(
 **Defaults:**
 
 ```php
-field('role', Decoders::withDefault(enum_of(Role::class), Role::Member))
+field('role', enum_of(Role::class)->withDefault(Role::Member))
 ```
 
 **Strict mode:**

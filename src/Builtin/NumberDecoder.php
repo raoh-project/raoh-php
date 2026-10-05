@@ -49,9 +49,9 @@ abstract class NumberDecoder extends BaseDecoder
     /** @return T */
     abstract protected static function zero(): mixed;
 
-    public function min(mixed $min, ?string $message = null): static
+    public function min(mixed $n, ?string $message = null): static
     {
-        $min = static::value($min);
+        $min = static::value($n);
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $min) >= 0,
             'out_of_range.minimum',
@@ -60,9 +60,9 @@ abstract class NumberDecoder extends BaseDecoder
         );
     }
 
-    public function max(mixed $max, ?string $message = null): static
+    public function max(mixed $n, ?string $message = null): static
     {
-        $max = static::value($max);
+        $max = static::value($n);
         return $this->bound(
             static fn (mixed $v): bool => static::order($v, $max) <= 0,
             'out_of_range.maximum',

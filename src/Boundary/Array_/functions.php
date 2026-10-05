@@ -141,12 +141,12 @@ function strict_object(FieldDecoder ...$fields): Decoder
 /**
  * @template T
  * @param Decoder<mixed, T> $dec
- * @param list<string> $known
+ * @param list<string> $knownFields
  * @return Decoder<mixed, T>
  */
-function strict(Decoder $dec, array $known): Decoder
+function strict(Decoder $dec, array $knownFields): Decoder
 {
-    return Decoders::strict($dec, $known);
+    return Decoders::strict($dec, $knownFields);
 }
 
 /**

@@ -48,7 +48,8 @@
     "scripts": {
         "test": "phpunit",
         "analyse": "./vendor/bin/phpstan analyse --memory-limit=512M",
-        "conformance": "scripts/conformance.sh"
+        "conformance": "scripts/conformance.sh",
+        "public-api": "php scripts/public-api.php"
     },
     "extra": {
         "branch-alias": {
