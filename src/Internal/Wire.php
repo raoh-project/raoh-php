@@ -57,14 +57,33 @@ final class Wire
             throw new \InvalidArgumentException("{$what} is not a value an issue can hold: " . get_debug_type($v)
                 . (is_string($v) ? ' that is not UTF-8' : ''));
         }
-        if ($kind === 'list' || $kind === 'map') {
+        if ($kind === 'map') {
             assert(is_array($v));
-            foreach ($v as $k => $e) {
-                if ($kind === 'map') {
-                    Arguments::text($k, "a name in {$what}");
-                }
+            self::checkMap($v, $what);
+        } elseif ($kind === 'list') {
+            assert(is_array($v));
+            foreach ($v as $e) {
                 self::check($e, $what);
             }
+        }
+    }
+
+    /**
+     * Refuses, with an \InvalidArgumentException, an array that is not a map from names to values
+     * metadata can hold, as an issue's metadata itself is one. A name is a key read as the string it
+     * is: PHP keys a name such as "404" as the int 404, which names the member "404" all the same.
+     * A list, which PHP keys 0, 1, 2 ..., names nothing, and is refused unless it is empty.
+     *
+     * @param array<array-key, mixed> $map
+     */
+    public static function checkMap(array $map, string $what): void
+    {
+        if ($map !== [] && array_is_list($map)) {
+            throw new \InvalidArgumentException("{$what} is a list; it has to name its values");
+        }
+        foreach ($map as $name => $value) {
+            Arguments::text((string) $name, "a name in {$what}");
+            self::check($value, "{$what} {$name}");
         }
     }
 

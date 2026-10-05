@@ -33,6 +33,8 @@ class ArgumentTest extends TestCase
         yield 'a bound of another temporal type' => [static fn () => string_()->time()->after('2024-01-01')];
         yield 'an int32 bound outside int32' => [static fn () => int_()->min(PHP_INT_MAX)];
         yield 'a pattern the language does not have' => [static fn () => string_()->pattern('(?=a)a')];
+        yield 'a message key of refine() that does not refine its code' => [static fn () => int_()->refine(static fn (int $v): bool => false, 'required', 'bad', [], 'blank')];
+        yield 'metadata of refine() that is a list' => [static fn () => int_()->refine(static fn (int $v): bool => false, 'custom', 'bad', [0 => 'x'])];
     }
 
     #[DataProvider('refused')]

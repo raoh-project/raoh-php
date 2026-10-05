@@ -122,6 +122,13 @@ class InvariantTest extends TestCase
         $this->assertNotFalse(json_encode($issues->toJsonList()), json_last_error_msg());
     }
 
+    public function testMetadataNamedByANumberIsNamedAllTheSame(): void
+    {
+        // PHP keys the name "404" as the int 404; it names the member "404" all the same.
+        $issue = Issue::of(Path::root(), 'custom', 'm', ['404' => 'not found']);
+        $this->assertSame('{"404":"not found"}', json_encode($issue->meta));
+    }
+
     public function testAnObjectKeepsItsMembersInOrder(): void
     {
         $o = new JsonObject(['b' => 1, 'a' => 2, '1' => 3]);

@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Raoh;
 
-use Raoh\Internal\Wire;
-use Raoh\Internal\Arguments;
-
 /**
  * Provides default combinators for any class implementing Decoder.
  *
@@ -63,28 +60,16 @@ trait DecoderTrait
         array|\Closure $meta = [],
         ?string $messageKey = null,
     ): Decoder {
-        Arguments::text($code, "the issue's code");
-        Arguments::text($message, "the issue's message");
-        if ($messageKey !== null) {
-            Arguments::text($messageKey, "the issue's message key");
-        }
-        if (is_array($meta)) {
-            foreach ($meta as $name => $value) {
-                Arguments::text((string) $name, "the name of the issue's metadata");
-                Wire::check($value, "the issue's metadata {$name}");
-            }
-        }
+        // The issue is made now, by Issue, so that every part known now is held to Issue's own
+        // invariants now. Only metadata a Closure computes from the value waits for the value.
+        $issue = Issue::custom(Path::root(), $code, $message, is_array($meta) ? $meta : [], $messageKey);
         return CallableDecoder::of(
             fn (mixed $in, ?Path $path = null): Result => $this->decode($in, $path)->flatMap(
                 static fn (mixed $v): Result => $predicate($v)
                     ? Result::ok($v)
-                    : Result::failCustom(
-                        $path ?? Path::root(),
-                        $code,
-                        $message,
-                        is_array($meta) ? $meta : $meta($v),
-                        $messageKey,
-                    ),
+                    : Result::err(Issues::of([
+                        ($meta instanceof \Closure ? $issue->withMeta($meta($v)) : $issue)->rebase($path ?? Path::root()),
+                    ])),
             ),
         );
     }

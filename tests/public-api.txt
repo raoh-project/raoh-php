@@ -274,6 +274,7 @@ final readonly class Raoh\Issue
   rebase(Raoh\Path $prefix): Raoh\Issue
   resolve(callable $resolver): Raoh\Issue {@param callable(string, array<string, mixed>): ?string $resolver}
   withCustomMessage(string $message): Raoh\Issue
+  withMeta(array $meta): Raoh\Issue {@param array<array-key, mixed> $meta}
 
 final class Raoh\Issues
   add(Raoh\Issue $issue): Raoh\Issues

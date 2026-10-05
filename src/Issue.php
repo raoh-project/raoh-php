@@ -35,13 +35,7 @@ final readonly class Issue
         if ($this->messageKey !== $code && !str_starts_with($this->messageKey, $code . '.')) {
             throw new \InvalidArgumentException("the message key {$this->messageKey} does not refine the code {$code}");
         }
-        foreach ($meta as $name => $value) {
-            if (!is_string($name)) {
-                throw new \InvalidArgumentException("an issue's metadata is named, not indexed by {$name}");
-            }
-            Arguments::text($name, "the name of an issue's metadata");
-            Wire::check($value, "the metadata {$name}");
-        }
+        Wire::checkMap($meta, "an issue's metadata");
     }
 
     /**
@@ -91,6 +85,16 @@ final readonly class Issue
     public function withCustomMessage(string $message): self
     {
         return new self($this->path, $this->code, $message, $this->meta, true, $this->messageKey);
+    }
+
+    /**
+     * This issue with other metadata, held to the same invariants.
+     *
+     * @param array<array-key, mixed> $meta
+     */
+    public function withMeta(array $meta): self
+    {
+        return new self($this->path, $this->code, $this->message, $meta, $this->customMessage, $this->messageKey);
     }
 
     public function rebase(Path $prefix): self
